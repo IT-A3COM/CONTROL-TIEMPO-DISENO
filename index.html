@@ -641,10 +641,22 @@ function manualTimeChange(rowId, tipo, valor){
 }
 
 function calcNetSec(r){
-  if(!r.startTs||!r.endTs)return 0;
-  const gross=Math.floor((r.endTs-r.startTs)/1000);
-  const paused=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
-  return Math.max(0,gross-paused);
+ if(!r.startTs) return 0;
+
+  // Momento final:
+  // - si tiene endTs, hasta endTs
+  // - si no tiene endTs pero está en pausa, hasta el inicio de la pausa
+  // - si no tiene endTs ni pausa, hasta ahora mismo
+  const ahora = Date.now();
+  const finBase = r.endTs
+    ? r.endTs
+    : (r.pauseStart ? r.pauseStart : ahora);
+
+  const gross = Math.floor((finBase - r.startTs) / 1000);
+
+  const paused = (r.pauses || []).reduce((a,p)=>a + Math.floor((p.to-p.from)/1000), 0);
+
+  return Math.max(0, gross - paused);
 }
 
 function renderRow(r){
@@ -689,10 +701,18 @@ function renderRow(r){
 
   if(bd) bd.disabled = r.locked && !editUnlocked;
 
-  const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
-  if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecShort(pausedSec):'';
-  const s=calcNetSec(r);
-  if(td)td.textContent=s?fmtSec(s):(r.pauseStart?'en pausa…':'—');
+  const pausedSec = (r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
+  const netSec = calcNetSec(r);
+
+  if (r.pauseStart) {
+    // En pausa: mostramos solo el tiempo neto trabajado hasta ahora, en morado
+    if (pi) pi.textContent = '⏸ pausado · tiempo neto: ' + fmtSecShort(netSec);
+  } else {
+    // No está en pausa: mostramos info de pausas (si las hay)
+    if (pi) pi.textContent = pausedSec ? '⏸ pausado: ' + fmtSecShort(pausedSec) : '';
+  }
+
+  if (td) td.textContent = netSec ? fmtSecShort(netSec) : '—';
 
   const cells = tr.querySelectorAll('.cell');
   cells.forEach((c,i)=>{
