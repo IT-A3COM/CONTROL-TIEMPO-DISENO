@@ -74,8 +74,6 @@ input.cell:disabled,select.cell:disabled{color:#555;background:transparent;curso
 input.obs{text-align:left;cursor:text}
 select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 .time-cell{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap}
-.time-display{font-size:11px;font-weight:600;color:#1a1a2e;min-width:52px;text-align:center}
-.time-display.empty{color:#aaa;font-weight:400;font-size:10px}
 .btn-t{font-size:10px;padding:3px 7px;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;font-weight:600}
 .btn-t:disabled{opacity:.4;cursor:default}
 .btn-start{background:#27ae60;color:#fff}
@@ -174,7 +172,7 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
   <div class="resumen-section">
     <div class="grand-total-box">
       <span style="font-size:13px;font-weight:700">⏱ Tiempo total registrado</span>
-      <span class="gt-val" id="gt-val">0h 00min</span>
+      <span class="gt-val" id="gt-val">0h 00min 00s</span>
     </div>
     <div class="resumen-grid" id="resumen-grid"></div>
   </div>
@@ -208,6 +206,12 @@ const pad=n=>String(n).padStart(2,'0');
 function fmtTime(ts){if(!ts)return'--:--:--';const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
 function fmtSec(s){return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min '+pad(s%60)+'s'}
 function fmtSecShort(s){return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min'}
+function fmtSecFull(s){
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  return h+'h '+pad(m)+'min '+pad(sec)+'s';
+}
 function today(){return new Date().toLocaleDateString('es-ES')}
 
 function opOptions(sel=''){
@@ -507,7 +511,7 @@ function renderOTPanel(ot){
           <th style="width:100px">Hora inicio</th>
           <th style="width:200px">Controles</th>
           <th style="width:80px">Hora fin</th>
-          <th style="width:100px">Total neto</th>
+          <th style="width:120px">Total neto</th>
           <th>Observaciones</th>
           <th style="width:26px"></th>
         </tr></thead>
@@ -520,7 +524,7 @@ function renderOTPanel(ot){
         <button class="btn-a btn-finalizar" id="btnfin-${ot.id}" onclick="finalizarOT(${ot.id})">✔ Finalizar OT</button>
       </div>
       <div class="ot-footer-right">
-        <div class="total-bar" id="totalbar-${ot.id}">Tiempo total: 0h 00min</div>
+        <div class="total-bar" id="totalbar-${ot.id}">Tiempo total: 0h 00min 00s</div>
         <button class="btn-a btn-print-ot" onclick="printOT(${ot.id})">🖨 Imprimir / PDF</button>
         <button class="btn-a btn-excel" onclick="exportOTExcel(${ot.id})">📥 Exportar Excel</button>
       </div>
@@ -552,6 +556,7 @@ function appendRowEl(otId,r,fields){
       <input class="cell hora-inicio" type="text"
              placeholder="hh:mm:ss"
              value=""
+             readonly
              oninput="manualTimeChange(${r.id}, 'start', this.value)">
     </td>
     <td><div class="time-cell">
@@ -563,6 +568,7 @@ function appendRowEl(otId,r,fields){
       <input class="cell hora-fin" type="text"
              placeholder="hh:mm:ss"
              value=""
+             readonly
              oninput="manualTimeChange(${r.id}, 'end', this.value)">
     </td>
     <td class="total-cell"><span class="total-disp">—</span><span class="pause-info"></span></td>
@@ -620,7 +626,7 @@ function manualTimeChange(rowId, tipo, valor){
   const cells = tr.querySelectorAll('.cell');
   const fechaStr = cells[0]?.value || '';
   const ts = parseHoraTexto(fechaStr, valor.trim());
-  if(!ts) return; // formato incorrecto, no tocamos nada
+  if(!ts) return;
 
   if(tipo === 'start'){
     r.startTs = ts;
@@ -630,7 +636,6 @@ function manualTimeChange(rowId, tipo, valor){
     if(!r.startTs) r.startTs = ts;
   }
 
-  // Si tocas horas a mano, borramos pausas para simplificar
   r.pauses = [];
   r.pauseStart = null;
   r.locked = !!(r.startTs && r.endTs);
@@ -658,21 +663,16 @@ function renderRow(r){
   const inpStart = tr.querySelector('.hora-inicio');
   const inpEnd   = tr.querySelector('.hora-fin');
 
-  if(inpStart){
-    if(r.startTs){
-      const d = new Date(r.startTs);
-      inpStart.value = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    }else{
-      inpStart.value = '';
-    }
+  // Refrescar inputs de hora SOLO si hay timestamp
+  if(inpStart && r.startTs){
+    const d = new Date(r.startTs);
+    const v = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    if(inpStart.value !== v) inpStart.value = v;
   }
-  if(inpEnd){
-    if(r.endTs){
-      const d = new Date(r.endTs);
-      inpEnd.value = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    }else{
-      inpEnd.value = '';
-    }
+  if(inpEnd && r.endTs){
+    const d = new Date(r.endTs);
+    const v = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    if(inpEnd.value !== v) inpEnd.value = v;
   }
 
   if(bs)bs.disabled=!!(r.startTs||r.locked);
@@ -690,9 +690,9 @@ function renderRow(r){
   if(bd) bd.disabled = r.locked && !editUnlocked;
 
   const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
-  if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecShort(pausedSec):'';
+  if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecFull(pausedSec):'';
   const s=calcNetSec(r);
-  if(td)td.textContent=s?fmtSec(s):(r.pauseStart?'en pausa…':'—');
+  if(td)td.textContent=s?fmtSecFull(s):(r.pauseStart?'en pausa…':'—');
 
   const cells = tr.querySelectorAll('.cell');
   cells.forEach((c,i)=>{
@@ -702,6 +702,10 @@ function renderRow(r){
       c.disabled = false;
     }
   });
+
+  // Hora inicio/fin editables solo si desbloqueas
+  if(inpStart) inpStart.readOnly = !editUnlocked;
+  if(inpEnd)   inpEnd.readOnly   = !editUnlocked;
 
   if(r.locked)tr.classList.add('row-locked');else tr.classList.remove('row-locked');
   updateOTTotal(r.otId);
@@ -725,7 +729,7 @@ function updateOTTotal(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
   const t=ot.rows.reduce((a,r)=>a+calcNetSec(r),0);
   const el=document.getElementById('totalbar-'+otId);
-  if(el)el.textContent='Tiempo total: '+fmtSecShort(t);
+  if(el)el.textContent='Tiempo total: '+fmtSecFull(t);
 }
 
 // Finalizar / Reabrir
@@ -812,6 +816,11 @@ function applyEditLockState(){
       });
       const bd = document.getElementById('bd-'+r.id);
       if(bd) bd.disabled = r.locked && !editUnlocked;
+
+      const inpStart = tr.querySelector('.hora-inicio');
+      const inpEnd   = tr.querySelector('.hora-fin');
+      if(inpStart) inpStart.readOnly = !editUnlocked;
+      if(inpEnd)   inpEnd.readOnly   = !editUnlocked;
     });
   });
 }
@@ -830,7 +839,7 @@ function toggleEditLock(){
   applyEditLockState();
 }
 
-// Resumen (igual que antes)
+// Resumen
 function collectResumenData(){
   let grand=0;
   const otList=[],byWorker={},byProcess={};
@@ -856,28 +865,28 @@ function buildResumen(){
   const grid=document.getElementById('resumen-grid');grid.innerHTML='';
   if(!ots.length){
     grid.innerHTML='<p style="color:#aaa;font-size:12px;padding:10px">No hay OT registradas.</p>';
-    document.getElementById('gt-val').textContent='0h 00min';
+    document.getElementById('gt-val').textContent='0h 00min 00s';
     return;
   }
   const{grand,otList,byWorker,byProcess}=collectResumenData();
-  document.getElementById('gt-val').textContent=fmtSecShort(grand);
+  document.getElementById('gt-val').textContent=fmtSecFull(grand);
   let html='<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#1a1a2e;padding:4px 0 2px;border-bottom:2px solid #1a1a2e;text-transform:uppercase">📋 Por OT</div>';
   otList.forEach(({ot,otTotal,byOp,byPr})=>{
     const st=ot.cerrada?'<span class="status-badge status-closed">🔒 Cerrada</span>':'<span class="status-badge status-open">🔓 Abierta</span>';
-    let rows=Object.entries(byOp).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">👷 ${k}</span><span class="rcard-val">${fmtSecShort(v)}</span></div>`).join('');
-    rows+=Object.entries(byPr).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">⚙ ${k}</span><span class="rcard-val">${fmtSecShort(v)}</span></div>`).join('');
+    let rows=Object.entries(byOp).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">👷 ${k}</span><span class="rcard-val">${fmtSecFull(v)}</span></div>`).join('');
+    rows+=Object.entries(byPr).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">⚙ ${k}</span><span class="rcard-val">${fmtSecFull(v)}</span></div>`).join('');
     if(!rows)rows='<div style="color:#aaa;font-size:11px;padding:6px 0">Sin datos</div>';
-    html+=`<div class="resumen-card"><div class="rcard-head"><span>${ot.num}${ot.desc?' — '+ot.desc:''}${ot.cliente?' · '+ot.cliente:''}</span>${st}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f0f0f0"><span>TOTAL OT</span><span>${fmtSecShort(otTotal)}</span></div></div>`;
+    html+=`<div class="resumen-card"><div class="rcard-head"><span>${ot.num}${ot.desc?' — '+ot.desc:''}${ot.cliente?' · '+ot.cliente:''}</span>${st}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f0f0f0"><span>TOTAL OT</span><span>${fmtSecFull(otTotal)}</span></div></div>`;
   });
   html+='<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#2c3e6e;padding:10px 0 2px;border-bottom:2px solid #2c3e6e;text-transform:uppercase;margin-top:8px">👷 Por Operario</div>';
   Object.entries(byWorker).sort((a,b)=>b[1].total-a[1].total).forEach(([w,d])=>{
-    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecShort(s)}</span></div>`).join('');
-    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#2c3e6e">👷 ${w}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#eaf0fb"><span>TOTAL</span><span>${fmtSecShort(d.total)}</span></div></div>`;
+    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecFull(s)}</span></div>`).join('');
+    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#2c3e6e">👷 ${w}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#eaf0fb"><span>TOTAL</span><span>${fmtSecFull(d.total)}</span></div></div>`;
   });
   html+='<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#4a235a;padding:10px 0 2px;border-bottom:2px solid #4a235a;text-transform:uppercase;margin-top:8px">⚙ Por Proceso</div>';
   Object.entries(byProcess).sort((a,b)=>b[1].total-a[1].total).forEach(([p,d])=>{
-    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecShort(s)}</span></div>`).join('');
-    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#4a235a">⚙ ${p}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f5eefa"><span>TOTAL</span><span>${fmtSecShort(d.total)}</span></div></div>`;
+    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecFull(s)}</span></div>`).join('');
+    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#4a235a">⚙ ${p}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f5eefa"><span>TOTAL</span><span>${fmtSecFull(d.total)}</span></div></div>`;
   });
   grid.innerHTML=html;
 }
@@ -888,9 +897,9 @@ function showView(name){
   document.getElementById('view-'+name).classList.add('active');
 }
 
-// TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
+// Aquí puedes meter tu código real de impresión y Excel
 function printOT(id){
-  alert('Implementa aquí tu lógica de impresión como en el código anterior.');
+  alert('Implementa aquí tu lógica de impresión como en tu código anterior.');
 }
 function exportOTExcel(id){
   alert('Implementa aquí tu lógica de exportación a Excel por OT.');
