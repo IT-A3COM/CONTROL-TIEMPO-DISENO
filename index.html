@@ -593,7 +593,7 @@ function renderRow(r){
 
   // Bloqueo de celdas:
   // i=0 Fecha        → solo tú (editUnlocked)
-  // i=1 Operario     → siempre editable (aunque cerrada)
+  // i=1 Operario     → siempre editable
   // i=2 Proceso      → siempre editable
   // i=3 Observaciones→ siempre editable
   const cells = tr.querySelectorAll('.cell');
@@ -690,15 +690,14 @@ function applyEditLockState(){
     }
   }
 
-  // Cabeceras OT:
-  // Nº OT, descripción y cliente SIEMPRE editables para todos
+  // Cabeceras OT: siempre editables para todos
   ots.forEach(ot=>{
     const numEl=document.getElementById('otnum-'+ot.id);
     const descEl=document.getElementById('otdesc-'+ot.id);
     const cliEl=document.getElementById('otcli-'+ot.id);
     [numEl,descEl,cliEl].forEach(el=>{
       if(!el)return;
-      el.disabled = false; // nunca se bloquean
+      el.disabled = false;
     });
 
     // Filas: solo controlamos fecha y botón borrar cerradas
@@ -716,34 +715,6 @@ function applyEditLockState(){
       const bd = document.getElementById('bd-'+r.id);
       if(bd) bd.disabled = r.locked && !editUnlocked;
     });
-  });
-}
-  // Actualizar estado de inputs según editUnlocked
-  ots.forEach(ot=>{
-    const numEl=document.getElementById('otnum-'+ot.id);
-    const descEl=document.getElementById('otdesc-'+ot.id);
-    const cliEl=document.getElementById('otcli-'+ot.id);
-    [descEl,cliEl].forEach(el=>{
-      if(!el)return;
-      el.disabled = !editUnlocked;
-    });
-    // si quieres bloquear también el número de OT, descomenta:
-    // if(numEl) numEl.disabled = !editUnlocked;
-
-    ot.rows.forEach(r=>{
-  const tr=document.getElementById('row-'+r.id);
-  if(!tr)return;
-  const cells = tr.querySelectorAll('.cell');
-  cells.forEach((c,i)=>{
-    if(i===0 || i===3){ // fecha y observaciones
-      c.disabled = !editUnlocked;
-    }else{
-      c.disabled = r.locked;
-    }
-  });
-  const bd = document.getElementById('bd-'+r.id);
-  if(bd) bd.disabled = r.locked && !editUnlocked;
-});
   });
 }
 
