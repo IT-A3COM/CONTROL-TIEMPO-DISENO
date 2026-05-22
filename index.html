@@ -377,9 +377,11 @@ function rebuildFromData(saved){
 
 // Boot con escucha en tiempo real
 function boot(){
-  FIRESTORE_DOC.onSnapshot((snap)=>{
-    document.getElementById('loading-overlay').style.display='none';
+  // Por si acaso, quita el overlay aunque falle Firestore
+  document.getElementById('loading-overlay').style.display='none';
 
+  FIRESTORE_DOC.onSnapshot((snap)=>{
+    console.log('onSnapshot recibido', snap && snap.exists ? 'con datos' : 'sin doc');
     if(snap.exists){
       const data = snap.data();
       rebuildFromData(data);
@@ -396,7 +398,6 @@ function boot(){
     }
   },(err)=>{
     console.error('Error escuchando Firestore',err);
-    document.getElementById('loading-overlay').style.display='none';
     setStatus('⚠️ Error en escucha de datos','err');
   });
 }
