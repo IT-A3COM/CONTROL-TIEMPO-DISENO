@@ -377,17 +377,16 @@ function rebuildFromData(saved){
 
 // Boot con escucha en tiempo real
 function boot(){
-  // Por si acaso, quita el overlay aunque falle Firestore
-  document.getElementById('loading-overlay').style.display='none';
+  // 1) Siempre quitar el overlay
+  document.getElementById('loading-overlay').style.display = 'none';
 
-  FIRESTORE_DOC.onSnapshot((snap)=>{
-    console.log('onSnapshot recibido', snap && snap.exists ? 'con datos' : 'sin doc');
+  // 2) Leer una vez de Firestore (sin tiempo real de momento)
+  FIRESTORE_DOC.get().then((snap)=>{
     if(snap.exists){
       const data = snap.data();
       rebuildFromData(data);
-      setStatus('✅ Datos compartidos (tiempo real)','ok');
+      setStatus('✅ Datos cargados de la nube','ok');
     }else{
-      // Documento aún no existe → creamos estructura inicial y guardamos
       ots = [];
       otId = 0;
       rowId = 0;
@@ -396,9 +395,15 @@ function boot(){
       setStatus('🆕 Documento creado en Firestore','info');
       saveNow();
     }
-  },(err)=>{
-    console.error('Error escuchando Firestore',err);
-    setStatus('⚠️ Error en escucha de datos','err');
+  }).catch((err)=>{
+    console.error('Error leyendo Firestore', err);
+    setStatus('⚠️ Error al leer datos compartidos','err');
+    // Si falla Firestore, al menos creamos una OT en local
+    ots = [];
+    otId = 0;
+    rowId = 0;
+    activeOT = null;
+    createOT();
   });
 }
 
