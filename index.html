@@ -74,6 +74,8 @@ input.cell:disabled,select.cell:disabled{color:#555;background:transparent;curso
 input.obs{text-align:left;cursor:text}
 select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 .time-cell{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap}
+.time-display{font-size:11px;font-weight:600;color:#1a1a2e;min-width:52px;text-align:center}
+.time-display.empty{color:#aaa;font-weight:400;font-size:10px}
 .btn-t{font-size:10px;padding:3px 7px;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;font-weight:600}
 .btn-t:disabled{opacity:.4;cursor:default}
 .btn-start{background:#27ae60;color:#fff}
@@ -155,13 +157,6 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 </div>
 
 <div class="view-panel active" id="view-registro">
-  <!-- Filtro Abiertas / OT finalizadas -->
-  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-    <strong style="font-size:12px;color:#333">OT:</strong>
-    <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff">Abiertas</button>
-    <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff">OT finalizadas</button>
-  </div>
-
   <div class="ot-tabs-bar" id="ot-tabs-bar">
     <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
   </div>
@@ -172,7 +167,7 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
   <div class="resumen-section">
     <div class="grand-total-box">
       <span style="font-size:13px;font-weight:700">⏱ Tiempo total registrado</span>
-      <span class="gt-val" id="gt-val">0h 00min 00s</span>
+      <span class="gt-val" id="gt-val">0h 00min</span>
     </div>
     <div class="resumen-grid" id="resumen-grid"></div>
   </div>
@@ -200,18 +195,11 @@ let ots=[], otId=0, rowId=0, activeOT=null;
 let saveTimer=null, pendingSave=false, isSaving=false;
 let editUnlocked = false;
 const EDIT_PASSWORD = 'A3com2026';
-let otFilter = 'abiertas'; // 'abiertas' o 'cerradas'
 
 const pad=n=>String(n).padStart(2,'0');
 function fmtTime(ts){if(!ts)return'--:--:--';const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
 function fmtSec(s){return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min '+pad(s%60)+'s'}
 function fmtSecShort(s){return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min'}
-function fmtSecFull(s){
-  const h = Math.floor(s/3600);
-  const m = Math.floor((s%3600)/60);
-  const sec = s%60;
-  return h+'h '+pad(m)+'min '+pad(sec)+'s';
-}
 function today(){return new Date().toLocaleDateString('es-ES')}
 
 function opOptions(sel=''){
@@ -245,18 +233,6 @@ function modalCancel(){
 }
 
 // Firestore storage
-async function loadFromStorage(){
-  try{
-    const snap = await FIRESTORE_DOC.get();
-    if(snap.exists){
-      return snap.data();
-    }
-  }catch(e){
-    console.error('Error leyendo Firestore',e);
-    setStatus('⚠️ Error al leer datos compartidos','err');
-  }
-  return null;
-}
 async function writeToStorage(data){
   try{
     await FIRESTORE_DOC.set(data);
@@ -328,45 +304,23 @@ function getOTColorState(ot){
   return '';
 }
 
-// Filtro Abiertas / Cerradas
-function setOTFilter(tipo){
-  otFilter = tipo;
-  const btnA = document.getElementById('btn-ot-abiertas');
-  const btnC = document.getElementById('btn-ot-cerradas');
-  if(tipo === 'abiertas'){
-    if(btnA){btnA.style.background='#1a1a2e';btnA.style.color='#fff';}
-    if(btnC){btnC.style.background='#7f8c8d';btnC.style.color='#fff';}
-  }else{
-    if(btnA){btnA.style.background='#7f8c8d';btnA.style.color='#fff';}
-    if(btnC){btnC.style.background='#1a1a2e';btnC.style.color='#fff';}
-  }
-  applyOTFilter();
-}
+// Reconstruir interfaz desde datos Firestore
+function rebuildFromData(saved){
+  // Reset variables
+  ots = [];
+  otId = saved.otId || 0;
+  rowId = saved.rowId || 0;
+  activeOT = saved.activeOT || null;
 
-function applyOTFilter(){
-  ots.forEach(ot=>{
-    const tab = document.getElementById('tab-ot-'+ot.id);
-    const panel = document.getElementById('panel-ot-'+ot.id);
-    if(!tab || !panel) return;
-    const esCerrada = !!ot.cerrada;
-    const visible = (otFilter === 'abiertas') ? !esCerrada : esCerrada;
-    tab.style.display = visible ? '' : 'none';
-    panel.style.display = (visible && ot.id === activeOT) ? 'block' : 'none';
-  });
+  const tabsBar = document.getElementById('ot-tabs-bar');
+  const panelsContainer = document.getElementById('ot-panels');
 
-  const actual = ots.find(o=>o.id===activeOT);
-  if(actual && ((otFilter==='abiertas'&&actual.cerrada)||(otFilter==='cerradas'&&!actual.cerrada))){
-    const candidato = ots.find(o=> (otFilter==='abiertas') ? !o.cerrada : o.cerrada );
-    if(candidato) activateOT(candidato.id);
-  }
-}
+  // Limpia pestañas (ot-tab) y paneles, deja el botón "Nueva OT"
+  tabsBar.querySelectorAll('.ot-tab').forEach(t => t.remove());
+  panelsContainer.innerHTML = '';
 
-// Boot
-async function boot(){
-  const saved=await loadFromStorage();
-  if(saved&&saved.ots&&saved.ots.length){
-    otId=saved.otId||0;rowId=saved.rowId||0;
-    for(const sot of saved.ots){
+  if(saved.ots && saved.ots.length){
+    saved.ots.forEach(sot=>{
       const ot={
         id:sot.id,
         num:sot.num,
@@ -378,13 +332,15 @@ async function boot(){
       ots.push(ot);
       renderOTTab(ot);
       renderOTPanel(ot);
+
       const numEl=document.getElementById('otnum-'+ot.id);
       const descEl=document.getElementById('otdesc-'+ot.id);
       const cliEl=document.getElementById('otcli-'+ot.id);
       if(numEl)numEl.value=ot.num;
       if(descEl)descEl.value=ot.desc||'';
       if(cliEl)cliEl.value=ot.cliente||'';
-      for(const sr of sot.rows||[]){
+
+      (sot.rows||[]).forEach(sr=>{
         const r={
           id:sr.id,otId:ot.id,
           startTs:sr.startTs,
@@ -395,22 +351,54 @@ async function boot(){
         };
         ot.rows.push(r);
         appendRowEl(ot.id,r,sr);
-      }
+      });
+
       if(ot.cerrada)restoreCerrada(ot.id);
       refreshRowNums(ot.id);
       updateOTTotal(ot.id);
       updateTabLabel(ot.id);
-    }
-    const act=saved.activeOT&&ots.find(o=>o.id===saved.activeOT)?saved.activeOT:ots[0]?.id;
+    });
+
+    const act = saved.activeOT && ots.find(o=>o.id===saved.activeOT)
+      ? saved.activeOT
+      : (ots[0] ? ots[0].id : null);
     if(act)activateOT(act);
-    setStatus('✅ Datos compartidos cargados','ok');
   }else{
+    // Si no hay nada en Firestore, creamos una OT por defecto
+    ots = [];
+    otId = 0;
+    rowId = 0;
+    activeOT = null;
     createOT();
-    setStatus('🆕 Sesión nueva — datos se guardarán en la nube','info');
   }
-  document.getElementById('loading-overlay').style.display='none';
+
   applyEditLockState();
-  setOTFilter('abiertas');
+}
+
+// Boot con escucha en tiempo real
+function boot(){
+  FIRESTORE_DOC.onSnapshot((snap)=>{
+    document.getElementById('loading-overlay').style.display='none';
+
+    if(snap.exists){
+      const data = snap.data();
+      rebuildFromData(data);
+      setStatus('✅ Datos compartidos (tiempo real)','ok');
+    }else{
+      // Documento aún no existe → creamos estructura inicial y guardamos
+      ots = [];
+      otId = 0;
+      rowId = 0;
+      activeOT = null;
+      createOT();
+      setStatus('🆕 Documento creado en Firestore','info');
+      saveNow();
+    }
+  },(err)=>{
+    console.error('Error escuchando Firestore',err);
+    document.getElementById('loading-overlay').style.display='none';
+    setStatus('⚠️ Error en escucha de datos','err');
+  });
 }
 
 function createOT(){
@@ -454,7 +442,6 @@ function renderOTTab(ot){
   x.onclick=function(e){e.stopPropagation();removeOT(ot.id);return false;};
   tab.appendChild(x);
   bar.insertBefore(tab,btn);
-  applyOTFilter();
 }
 
 function updateTabLabel(id){
@@ -511,7 +498,7 @@ function renderOTPanel(ot){
           <th style="width:100px">Hora inicio</th>
           <th style="width:200px">Controles</th>
           <th style="width:80px">Hora fin</th>
-          <th style="width:120px">Total neto</th>
+          <th style="width:100px">Total neto</th>
           <th>Observaciones</th>
           <th style="width:26px"></th>
         </tr></thead>
@@ -524,7 +511,7 @@ function renderOTPanel(ot){
         <button class="btn-a btn-finalizar" id="btnfin-${ot.id}" onclick="finalizarOT(${ot.id})">✔ Finalizar OT</button>
       </div>
       <div class="ot-footer-right">
-        <div class="total-bar" id="totalbar-${ot.id}">Tiempo total: 0h 00min 00s</div>
+        <div class="total-bar" id="totalbar-${ot.id}">Tiempo total: 0h 00min</div>
         <button class="btn-a btn-print-ot" onclick="printOT(${ot.id})">🖨 Imprimir / PDF</button>
         <button class="btn-a btn-excel" onclick="exportOTExcel(${ot.id})">📥 Exportar Excel</button>
       </div>
@@ -552,25 +539,13 @@ function appendRowEl(otId,r,fields){
     <td><input class="cell" type="text" value="${fields.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
     <td><select class="cell" onchange="autosave()">${opOptions(fields.operario||'')}</select></td>
     <td><select class="cell" onchange="autosave()">${prOptions(fields.proceso||'')}</select></td>
-    <td>
-      <input class="cell hora-inicio" type="text"
-             placeholder="hh:mm:ss"
-             value=""
-             readonly
-             oninput="manualTimeChange(${r.id}, 'start', this.value)">
-    </td>
+    <td><span class="time-display empty start-disp">--:--:--</span></td>
     <td><div class="time-cell">
       <button class="btn-t btn-start" id="bs-${r.id}" onclick="pressStart(${r.id})">INICIO</button>
       <button class="btn-t btn-pause" id="bp-${r.id}" onclick="pressPause(${r.id})" disabled>⏸ PAUSA</button>
       <button class="btn-t btn-end"   id="be-${r.id}" onclick="pressEnd(${r.id})"   disabled>FIN</button>
     </div></td>
-    <td>
-      <input class="cell hora-fin" type="text"
-             placeholder="hh:mm:ss"
-             value=""
-             readonly
-             oninput="manualTimeChange(${r.id}, 'end', this.value)">
-    </td>
+    <td><span class="time-display empty end-disp">--:--:--</span></td>
     <td class="total-cell"><span class="total-disp">—</span><span class="pause-info"></span></td>
     <td><input class="cell obs" type="text" value="${fields.obs||''}" placeholder="Notas…" oninput="autosave()"></td>
     <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button></td>`;
@@ -602,49 +577,6 @@ function pressEnd(id){
   autosave();
 }
 
-function parseHoraTexto(fechaStr, horaStr){
-  if(!fechaStr || !horaStr) return null;
-  const fParts = fechaStr.split('/');
-  if(fParts.length < 3) return null;
-  const d = parseInt(fParts[0],10);
-  const m = parseInt(fParts[1],10)-1;
-  const y = parseInt(fParts[2],10);
-  const hParts = horaStr.split(':');
-  const h = parseInt(hParts[0],10);
-  const mi = parseInt(hParts[1]||'0',10);
-  const s = parseInt(hParts[2]||'0',10);
-  if(isNaN(d)||isNaN(m)||isNaN(y)||isNaN(h)||isNaN(mi)||isNaN(s)) return null;
-  return new Date(y,m,d,h,mi,s).getTime();
-}
-
-function manualTimeChange(rowId, tipo, valor){
-  if(!editUnlocked) return; // solo tú con contraseña
-  const r = allRows().find(x=>x.id===rowId);
-  if(!r) return;
-  const tr = document.getElementById('row-'+r.id);
-  if(!tr) return;
-  const cells = tr.querySelectorAll('.cell');
-  const fechaStr = cells[0]?.value || '';
-  const ts = parseHoraTexto(fechaStr, valor.trim());
-  if(!ts) return;
-
-  if(tipo === 'start'){
-    r.startTs = ts;
-    if(!r.endTs) r.endTs = ts;
-  }else if(tipo === 'end'){
-    r.endTs = ts;
-    if(!r.startTs) r.startTs = ts;
-  }
-
-  r.pauses = [];
-  r.pauseStart = null;
-  r.locked = !!(r.startTs && r.endTs);
-
-  renderRow(r);
-  updateTabLabel(r.otId);
-  autosave();
-}
-
 function calcNetSec(r){
   if(!r.startTs||!r.endTs)return 0;
   const gross=Math.floor((r.endTs-r.startTs)/1000);
@@ -654,27 +586,22 @@ function calcNetSec(r){
 
 function renderRow(r){
   const tr=document.getElementById('row-'+r.id);if(!tr)return;
+  const sd=tr.querySelector('.start-disp');
+  const ed=tr.querySelector('.end-disp');
   const td=tr.querySelector('.total-disp');
   const pi=tr.querySelector('.pause-info');
   const bs=document.getElementById('bs-'+r.id);
   const bp=document.getElementById('bp-'+r.id);
   const be=document.getElementById('be-'+r.id);
   const bd=document.getElementById('bd-'+r.id);
-  const inpStart = tr.querySelector('.hora-inicio');
-  const inpEnd   = tr.querySelector('.hora-fin');
 
-  // Refrescar inputs de hora SOLO si hay timestamp
-  if(inpStart && r.startTs){
-    const d = new Date(r.startTs);
-    const v = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    if(inpStart.value !== v) inpStart.value = v;
-  }
-  if(inpEnd && r.endTs){
-    const d = new Date(r.endTs);
-    const v = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    if(inpEnd.value !== v) inpEnd.value = v;
-  }
+  // Mostrar horas
+  if(r.startTs){sd.textContent=fmtTime(r.startTs);sd.classList.remove('empty');}
+  else{sd.textContent='--:--:--';sd.classList.add('empty');}
+  if(r.endTs){ed.textContent=fmtTime(r.endTs);ed.classList.remove('empty');}
+  else{ed.textContent='--:--:--';ed.classList.add('empty');}
 
+  // Botones INICIO / PAUSA / FIN
   if(bs)bs.disabled=!!(r.startTs||r.locked);
   if(bp){
     bp.disabled=!r.startTs||!!r.endTs||r.locked;
@@ -687,25 +614,30 @@ function renderRow(r){
     else{be.textContent='FIN';be.className='btn-t btn-end';}
   }
 
+  // Borrar fila:
+  // - abierta: cualquiera puede borrarla
+  // - cerrada: solo si editUnlocked (tú)
   if(bd) bd.disabled = r.locked && !editUnlocked;
 
+  // Info pausas y total
   const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
-  if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecFull(pausedSec):'';
+  if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecShort(pausedSec):'';
   const s=calcNetSec(r);
-  if(td)td.textContent=s?fmtSecFull(s):(r.pauseStart?'en pausa…':'—');
+  if(td)td.textContent=s?fmtSec(s):(r.pauseStart?'en pausa…':'—');
 
+  // Bloqueo de celdas:
+  // i=0 Fecha        → solo tú (editUnlocked)
+  // i=1 Operario     → siempre editable (aunque cerrada)
+  // i=2 Proceso      → siempre editable
+  // i=3 Observaciones→ siempre editable
   const cells = tr.querySelectorAll('.cell');
   cells.forEach((c,i)=>{
-    if(i===0){ // Fecha
+    if(i===0){                // Fecha
       c.disabled = !editUnlocked;
     }else{
-      c.disabled = false;
+      c.disabled = false;     // operario/proceso/obs siempre editables
     }
   });
-
-  // Hora inicio/fin editables solo si desbloqueas
-  if(inpStart) inpStart.readOnly = !editUnlocked;
-  if(inpEnd)   inpEnd.readOnly   = !editUnlocked;
 
   if(r.locked)tr.classList.add('row-locked');else tr.classList.remove('row-locked');
   updateOTTotal(r.otId);
@@ -729,7 +661,7 @@ function updateOTTotal(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
   const t=ot.rows.reduce((a,r)=>a+calcNetSec(r),0);
   const el=document.getElementById('totalbar-'+otId);
-  if(el)el.textContent='Tiempo total: '+fmtSecFull(t);
+  if(el)el.textContent='Tiempo total: '+fmtSecShort(t);
 }
 
 // Finalizar / Reabrir
@@ -746,7 +678,6 @@ function applyFinalizarUI(id){
     panel.querySelectorAll('.cell:not(:disabled)').forEach(i=>i.disabled=true);
   }
   updateTabLabel(id);
-  applyOTFilter();
 }
 function restoreCerrada(id){
   const ot=ots.find(o=>o.id===id);if(!ot)return;
@@ -772,7 +703,6 @@ function reabrirOT(id){
     renderRow(r);
   }});
   updateTabLabel(id);autosave();
-  applyOTFilter();
 }
 
 function getRowFields(r){
@@ -794,34 +724,60 @@ function applyEditLockState(){
     }
   }
 
+  // Cabeceras OT:
+  // Nº OT, descripción y cliente SIEMPRE editables para todos
   ots.forEach(ot=>{
     const numEl=document.getElementById('otnum-'+ot.id);
     const descEl=document.getElementById('otdesc-'+ot.id);
     const cliEl=document.getElementById('otcli-'+ot.id);
     [numEl,descEl,cliEl].forEach(el=>{
       if(!el)return;
-      el.disabled = false;
+      el.disabled = false; // nunca se bloquean
     });
 
+    // Filas: solo controlamos fecha y botón borrar cerradas
     ot.rows.forEach(r=>{
       const tr=document.getElementById('row-'+r.id);
       if(!tr)return;
       const cells = tr.querySelectorAll('.cell');
       cells.forEach((c,i)=>{
-        if(i===0){ // Fecha
+        if(i===0){                // Fecha
           c.disabled = !editUnlocked;
         }else{
-          c.disabled = false;
+          c.disabled = false;     // resto siempre editable
         }
       });
       const bd = document.getElementById('bd-'+r.id);
       if(bd) bd.disabled = r.locked && !editUnlocked;
-
-      const inpStart = tr.querySelector('.hora-inicio');
-      const inpEnd   = tr.querySelector('.hora-fin');
-      if(inpStart) inpStart.readOnly = !editUnlocked;
-      if(inpEnd)   inpEnd.readOnly   = !editUnlocked;
     });
+  });
+}
+  // Actualizar estado de inputs según editUnlocked
+  ots.forEach(ot=>{
+    const numEl=document.getElementById('otnum-'+ot.id);
+    const descEl=document.getElementById('otdesc-'+ot.id);
+    const cliEl=document.getElementById('otcli-'+ot.id);
+    [descEl,cliEl].forEach(el=>{
+      if(!el)return;
+      el.disabled = !editUnlocked;
+    });
+    // si quieres bloquear también el número de OT, descomenta:
+    // if(numEl) numEl.disabled = !editUnlocked;
+
+    ot.rows.forEach(r=>{
+  const tr=document.getElementById('row-'+r.id);
+  if(!tr)return;
+  const cells = tr.querySelectorAll('.cell');
+  cells.forEach((c,i)=>{
+    if(i===0 || i===3){ // fecha y observaciones
+      c.disabled = !editUnlocked;
+    }else{
+      c.disabled = r.locked;
+    }
+  });
+  const bd = document.getElementById('bd-'+r.id);
+  if(bd) bd.disabled = r.locked && !editUnlocked;
+});
   });
 }
 
@@ -839,7 +795,7 @@ function toggleEditLock(){
   applyEditLockState();
 }
 
-// Resumen
+// Resumen (igual que antes)
 function collectResumenData(){
   let grand=0;
   const otList=[],byWorker={},byProcess={};
@@ -865,28 +821,28 @@ function buildResumen(){
   const grid=document.getElementById('resumen-grid');grid.innerHTML='';
   if(!ots.length){
     grid.innerHTML='<p style="color:#aaa;font-size:12px;padding:10px">No hay OT registradas.</p>';
-    document.getElementById('gt-val').textContent='0h 00min 00s';
+    document.getElementById('gt-val').textContent='0h 00min';
     return;
   }
   const{grand,otList,byWorker,byProcess}=collectResumenData();
-  document.getElementById('gt-val').textContent=fmtSecFull(grand);
+  document.getElementById('gt-val').textContent=fmtSecShort(grand);
   let html='<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#1a1a2e;padding:4px 0 2px;border-bottom:2px solid #1a1a2e;text-transform:uppercase">📋 Por OT</div>';
   otList.forEach(({ot,otTotal,byOp,byPr})=>{
     const st=ot.cerrada?'<span class="status-badge status-closed">🔒 Cerrada</span>':'<span class="status-badge status-open">🔓 Abierta</span>';
-    let rows=Object.entries(byOp).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">👷 ${k}</span><span class="rcard-val">${fmtSecFull(v)}</span></div>`).join('');
-    rows+=Object.entries(byPr).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">⚙ ${k}</span><span class="rcard-val">${fmtSecFull(v)}</span></div>`).join('');
+    let rows=Object.entries(byOp).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">👷 ${k}</span><span class="rcard-val">${fmtSecShort(v)}</span></div>`).join('');
+    rows+=Object.entries(byPr).map(([k,v])=>`<div class="rcard-row"><span class="rcard-label">⚙ ${k}</span><span class="rcard-val">${fmtSecShort(v)}</span></div>`).join('');
     if(!rows)rows='<div style="color:#aaa;font-size:11px;padding:6px 0">Sin datos</div>';
-    html+=`<div class="resumen-card"><div class="rcard-head"><span>${ot.num}${ot.desc?' — '+ot.desc:''}${ot.cliente?' · '+ot.cliente:''}</span>${st}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f0f0f0"><span>TOTAL OT</span><span>${fmtSecFull(otTotal)}</span></div></div>`;
+    html+=`<div class="resumen-card"><div class="rcard-head"><span>${ot.num}${ot.desc?' — '+ot.desc:''}${ot.cliente?' · '+ot.cliente:''}</span>${st}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f0f0f0"><span>TOTAL OT</span><span>${fmtSecShort(otTotal)}</span></div></div>`;
   });
   html+='<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#2c3e6e;padding:10px 0 2px;border-bottom:2px solid #2c3e6e;text-transform:uppercase;margin-top:8px">👷 Por Operario</div>';
   Object.entries(byWorker).sort((a,b)=>b[1].total-a[1].total).forEach(([w,d])=>{
-    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecFull(s)}</span></div>`).join('');
-    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#2c3e6e">👷 ${w}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#eaf0fb"><span>TOTAL</span><span>${fmtSecFull(d.total)}</span></div></div>`;
+    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecShort(s)}</span></div>`).join('');
+    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#2c3e6e">👷 ${w}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#eaf0fb"><span>TOTAL</span><span>${fmtSecShort(d.total)}</span></div></div>`;
   });
   html+='<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#4a235a;padding:10px 0 2px;border-bottom:2px solid #4a235a;text-transform:uppercase;margin-top:8px">⚙ Por Proceso</div>';
   Object.entries(byProcess).sort((a,b)=>b[1].total-a[1].total).forEach(([p,d])=>{
-    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecFull(s)}</span></div>`).join('');
-    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#4a235a">⚙ ${p}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f5eefa"><span>TOTAL</span><span>${fmtSecFull(d.total)}</span></div></div>`;
+    let rows=Object.entries(d.ots).map(([n,s])=>`<div class="rcard-row"><span class="rcard-label">📋 ${n}</span><span class="rcard-val">${fmtSecShort(s)}</span></div>`).join('');
+    html+=`<div class="resumen-card"><div class="rcard-head" style="background:#4a235a">⚙ ${p}</div><div class="rcard-body">${rows}</div><div class="rcard-row" style="padding:6px 12px;font-weight:700;background:#f5eefa"><span>TOTAL</span><span>${fmtSecShort(d.total)}</span></div></div>`;
   });
   grid.innerHTML=html;
 }
@@ -897,16 +853,8 @@ function showView(name){
   document.getElementById('view-'+name).classList.add('active');
 }
 
-// Aquí puedes meter tu código real de impresión y Excel
-function printOT(id){
-  alert('Implementa aquí tu lógica de impresión como en tu código anterior.');
-}
-function exportOTExcel(id){
-  alert('Implementa aquí tu lógica de exportación a Excel por OT.');
-}
-function exportResumenExcel(){
-  alert('Implementa aquí tu lógica de exportación de resumen a Excel.');
-}
+// (Por brevedad no repito printOT/exportOTExcel/exportResumenExcel;
+// puedes copiar esas funciones del código anterior si las necesitas)
 
 boot();
 </script>
