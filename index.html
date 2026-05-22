@@ -86,20 +86,6 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 .pause-info{font-size:10px;color:#8e44ad;font-weight:600;display:block;margin-top:2px}
 .total-cell{font-weight:700;color:#1a1a2e;font-size:12px}
 .btn-del{background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;font-weight:700}
-.btn-move{
-  background:#7f8c8d;
-  color:#fff;
-  border:none;
-  border-radius:4px;
-  padding:2px 5px;
-  cursor:pointer;
-  font-size:10px;
-  margin-right:2px;
-}
-.btn-move:disabled{
-  opacity:.3;
-  cursor:default;
-}
 .btn-del:disabled{opacity:.3;cursor:default}
 .ot-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px}
 .ot-footer-left{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -581,11 +567,7 @@ function appendRowEl(otId,r,fields){
     </td>
     <td class="total-cell"><span class="total-disp">—</span><span class="pause-info"></span></td>
     <td><input class="cell obs" type="text" value="${fields.obs||''}" placeholder="Notas…" oninput="autosave()"></td>
-    <td>
-  <button class="btn-move" onclick="moveRowUp(${r.id},${otId})">▲</button>
-  <button class="btn-move" onclick="moveRowDown(${r.id},${otId})">▼</button>
-  <button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button>
-</td>
+    <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button></td>`;
   tbody.appendChild(tr);
   renderRow(r);
 }
@@ -752,53 +734,6 @@ function delRow(id,otId){
   refreshRowNums(otId);
   updateOTTotal(otId);
   updateTabLabel(otId);
-  autosave();
-}
-  function moveRowUp(rowId, otId){
-  const ot = ots.find(o => o.id === otId);
-  if (!ot) return;
-  const idx = ot.rows.findIndex(r => r.id === rowId);
-  if (idx <= 0) return; // ya está arriba
-
-  // Intercambiar en el array
-  const tmp = ot.rows[idx-1];
-  ot.rows[idx-1] = ot.rows[idx];
-  ot.rows[idx] = tmp;
-
-  // Reordenar en el DOM
-  const tbody = document.getElementById('tbody-' + otId);
-  const row = document.getElementById('row-' + rowId);
-  const prev = row.previousElementSibling;
-  if (tbody && row && prev) {
-    tbody.insertBefore(row, prev);
-  }
-
-  refreshRowNums(otId);
-  updateOTTotal(otId);
-  autosave();
-}
-
-function moveRowDown(rowId, otId){
-  const ot = ots.find(o => o.id === otId);
-  if (!ot) return;
-  const idx = ot.rows.findIndex(r => r.id === rowId);
-  if (idx === -1 || idx >= ot.rows.length - 1) return; // ya está abajo
-
-  // Intercambiar en el array
-  const tmp = ot.rows[idx+1];
-  ot.rows[idx+1] = ot.rows[idx];
-  ot.rows[idx] = tmp;
-
-  // Reordenar en el DOM
-  const tbody = document.getElementById('tbody-' + otId);
-  const row = document.getElementById('row-' + rowId);
-  const next = row.nextElementSibling;
-  if (tbody && row && next) {
-    tbody.insertBefore(next, row);
-  }
-
-  refreshRowNums(otId);
-  updateOTTotal(otId);
   autosave();
 }
 function allRows(){return ots.flatMap(o=>o.rows)}
