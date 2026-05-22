@@ -256,8 +256,10 @@ async function loadFromStorage(){
 async function writeToStorage(data){
   try{
     await FIRESTORE_DOC.set(data);
+    alert('Guardado en Firestore OK');
     return true;
   }catch(e){
+    alert('ERROR al guardar en Firestore: ' + e.message);
     console.error('Error escribiendo Firestore',e);
     return false;
   }
