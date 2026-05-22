@@ -172,12 +172,30 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 </div>
 
 <div class="view-panel active" id="view-registro">
-  <!-- Filtro Abiertas / OT finalizadas -->
-  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-    <strong style="font-size:12px;color:#333">OT:</strong>
-    <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff">Abiertas</button>
-    <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff">OT finalizadas</button>
+
+  <!-- Carpetas por operario -->
+  <div class="btn-tabs" id="operario-tabs" style="margin-bottom:8px;">
+    <button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
+    <button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
+    <button class="view-tab" onclick="setCarpetaOperario('Juan Carlos')">👷 Juan Carlos</button>
+    <button class="view-tab" onclick="setCarpetaOperario('Juan Ramón')">👷 Juan Ramón</button>
+    <button class="view-tab" onclick="setCarpetaOperario('Otro...')">👷 Otro...</button>
   </div>
+
+  <!-- Filtro Abiertas / OT finalizadas -->
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+    <strong style="font-size:12px;color:#333;">OT</strong>
+    <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff;">Abiertas</button>
+    <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff;">OT finalizadas</button>
+  </div>
+
+  <div class="ot-tabs-bar" id="ot-tabs-bar">
+    <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
+  </div>
+
+  <div id="ot-panels"></div>
+
+</div>
 
   <div class="ot-tabs-bar" id="ot-tabs-bar">
     <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
@@ -218,6 +236,7 @@ let saveTimer=null, pendingSave=false, isSaving=false;
 let editUnlocked = false;
 const EDIT_PASSWORD = 'A3com2026';
 let otFilter = 'abiertas'; // 'abiertas' o 'cerradas'
+let carpetaOperario = 'Alberto Vivoras'; // carpeta activa al inicio
 let operarioFilter = null; // null = todos, o nombre del operario
 
 const pad=n=>String(n).padStart(2,'0');
@@ -353,7 +372,9 @@ function setOTFilter(tipo){
     if(btnC){btnC.style.background='#1a1a2e';btnC.style.color='#fff';}
   }
   applyOTFilter();
+  aplicarCarpetaOperario();
 }
+
 
 function applyOTFilter(){
   ots.forEach(ot=>{
@@ -370,6 +391,43 @@ function applyOTFilter(){
   if(actual && ((otFilter==='abiertas'&&actual.cerrada)||(otFilter==='cerradas'&&!actual.cerrada))){
     const candidato = ots.find(o=> (otFilter==='abiertas') ? !o.cerrada : o.cerrada );
     if(candidato) activateOT(candidato.id);
+  }
+}
+
+function aplicarCarpetaOperario(){
+  ots.forEach(ot => {
+    const tab   = document.getElementById('tab-ot-' + ot.id);
+    const panel = document.getElementById('panel-ot-' + ot.id);
+    if (!tab || !panel) return;
+
+    // Filtro Abiertas / Cerradas que ya usas
+    const esCerrada = !!ot.cerrada;
+    const visiblePorEstado = otFilter === 'abiertas' ? !esCerrada : esCerrada;
+
+    // Operario dueño (primera línea)
+    const dueno = getOperarioDueno(ot);
+    const visiblePorCarpeta = (dueno === carpetaOperario);
+
+    const visible = visiblePorEstado && visiblePorCarpeta;
+
+    tab.style.display   = visible ? 'inline-flex' : 'none';
+    panel.style.display = (visible && ot.id === activeOT) ? 'block' : 'none';
+  });
+
+  // Asegurar que la OT activa pertenece a la carpeta
+  let actual = ots.find(o => o.id === activeOT);
+  if (!actual || getOperarioDueno(actual) !== carpetaOperario) {
+    const candidato = ots.find(o => {
+      const esCerrada = !!o.cerrada;
+      const visiblePorEstado = otFilter === 'abiertas' ? !esCerrada : esCerrada;
+      if (!visiblePorEstado) return false;
+      return getOperarioDueno(o) === carpetaOperario;
+    });
+    if (candidato) {
+      activateOT(candidato.id);
+    } else {
+      activeOT = null;
+    }
   }
 }
 
@@ -426,7 +484,7 @@ async function boot(){
     document.getElementById('loading-overlay').style.display='none';
   applyEditLockState();
   setOTFilter('abiertas');
-  applyOperarioFilter();
+  applyCarpetaOperario();
 
 }
 
@@ -446,7 +504,9 @@ function createOT(){
   addRow(id);
   activateOT(id);
   autosave();
+    aplicarCarpetaOperario();
 }
+
 
 function activateOT(id){
   activeOT=id;
@@ -868,6 +928,11 @@ function getRowFields(r){
   const c=tr?tr.querySelectorAll('.cell'):[];
   return{fecha:c[0]?.value||'',operario:c[1]?.value||'',proceso:c[2]?.value||'',obs:c[3]?.value||''};
 }
+function getOperarioDueno(ot){
+  if (!ot || !ot.rows || !ot.rows.length) return '';
+  const primera = ot.rows[0];
+  return primera.operario || '';
+}
 
 // Bloqueo/desbloqueo de edición
 function applyEditLockState(){
@@ -986,6 +1051,20 @@ function showView(name){
   }
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
+}
+
+function setCarpetaOperario(nombre){
+  carpetaOperario = nombre;
+
+  // Marcar pestaña activa en la barra de operarios
+  const tabs = document.querySelectorAll('#operario-tabs .view-tab');
+  tabs.forEach(t => {
+    const esEste = t.textContent.includes(nombre);
+    t.classList.toggle('active', esEste);
+  });
+
+  // Ajustar qué OT se ven
+  aplicarCarpetaOperario();
 }
 
 function setOperarioView(nombre){
