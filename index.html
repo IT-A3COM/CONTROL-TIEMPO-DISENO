@@ -377,6 +377,8 @@ function rebuildFromData(saved){
 
 // Boot con escucha en tiempo real
 function boot(){
+  alert('boot arrancó');
+  document.getElementById('loading-overlay').style.display = 'none';
   // 1) Siempre quitar el overlay
   document.getElementById('loading-overlay').style.display = 'none';
 
