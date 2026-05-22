@@ -575,20 +575,20 @@ function renderRow(r){
     if(r.locked){be.textContent='🔒';be.className='btn-t btn-end locked';}
     else{be.textContent='FIN';be.className='btn-t btn-end';}
   }
-  if(bd)bd.disabled=r.locked;
+  if(bd) bd.disabled = r.locked && !editUnlocked;
   const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
   if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecShort(pausedSec):'';
   const s=calcNetSec(r);
   if(td)td.textContent=s?fmtSec(s):(r.pauseStart?'en pausa…':'—');
   // bloqueo de edición manual (fecha y obs) según editUnlocked
-  const cells = tr.querySelectorAll('.cell');
-  cells.forEach((c,i)=>{
-    if(i===0 || i===3){ // fecha y observaciones
-      c.disabled = !editUnlocked || r.locked;
-    }else{
-      c.disabled = r.locked;
-    }
-  });
+const cells = tr.querySelectorAll('.cell');
+cells.forEach((c,i)=>{
+  if(i===0 || i===3){ // fecha y observaciones
+    c.disabled = !editUnlocked; // solo depende de la contraseña
+  }else{
+    c.disabled = r.locked; // operario/proceso se bloquean al cerrar
+  }
+});
   if(r.locked)tr.classList.add('row-locked');else tr.classList.remove('row-locked');
   updateOTTotal(r.otId);
 }
@@ -686,17 +686,19 @@ function applyEditLockState(){
     // if(numEl) numEl.disabled = !editUnlocked;
 
     ot.rows.forEach(r=>{
-      const tr=document.getElementById('row-'+r.id);
-      if(!tr)return;
-      const cells = tr.querySelectorAll('.cell');
-      cells.forEach((c,i)=>{
-        if(i===0 || i===3){ // fecha y observaciones
-          c.disabled = !editUnlocked || r.locked;
-        }else{
-          c.disabled = r.locked;
-        }
-      });
-    });
+  const tr=document.getElementById('row-'+r.id);
+  if(!tr)return;
+  const cells = tr.querySelectorAll('.cell');
+  cells.forEach((c,i)=>{
+    if(i===0 || i===3){ // fecha y observaciones
+      c.disabled = !editUnlocked;
+    }else{
+      c.disabled = r.locked;
+    }
+  });
+  const bd = document.getElementById('bd-'+r.id);
+  if(bd) bd.disabled = r.locked && !editUnlocked;
+});
   });
 }
 
