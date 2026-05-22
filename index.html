@@ -560,10 +560,14 @@ function renderRow(r){
   const bp=document.getElementById('bp-'+r.id);
   const be=document.getElementById('be-'+r.id);
   const bd=document.getElementById('bd-'+r.id);
+
+  // Mostrar horas
   if(r.startTs){sd.textContent=fmtTime(r.startTs);sd.classList.remove('empty');}
   else{sd.textContent='--:--:--';sd.classList.add('empty');}
   if(r.endTs){ed.textContent=fmtTime(r.endTs);ed.classList.remove('empty');}
   else{ed.textContent='--:--:--';ed.classList.add('empty');}
+
+  // Botones INICIO / PAUSA / FIN
   if(bs)bs.disabled=!!(r.startTs||r.locked);
   if(bp){
     bp.disabled=!r.startTs||!!r.endTs||r.locked;
@@ -575,20 +579,32 @@ function renderRow(r){
     if(r.locked){be.textContent='🔒';be.className='btn-t btn-end locked';}
     else{be.textContent='FIN';be.className='btn-t btn-end';}
   }
+
+  // Borrar fila:
+  // - abierta: cualquiera puede borrarla
+  // - cerrada: solo si editUnlocked (tú)
   if(bd) bd.disabled = r.locked && !editUnlocked;
+
+  // Info pausas y total
   const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
   if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecShort(pausedSec):'';
   const s=calcNetSec(r);
   if(td)td.textContent=s?fmtSec(s):(r.pauseStart?'en pausa…':'—');
-  // bloqueo de edición manual (fecha y obs) según editUnlocked
-const cells = tr.querySelectorAll('.cell');
-cells.forEach((c,i)=>{
-  if(i===0 || i===3){ // fecha y observaciones
-    c.disabled = !editUnlocked; // solo depende de la contraseña
-  }else{
-    c.disabled = r.locked; // operario/proceso se bloquean al cerrar
-  }
-});
+
+  // Bloqueo de celdas:
+  // i=0 Fecha        → solo tú (editUnlocked)
+  // i=1 Operario     → siempre editable (aunque cerrada)
+  // i=2 Proceso      → siempre editable
+  // i=3 Observaciones→ siempre editable
+  const cells = tr.querySelectorAll('.cell');
+  cells.forEach((c,i)=>{
+    if(i===0){                // Fecha
+      c.disabled = !editUnlocked;
+    }else{
+      c.disabled = false;     // operario/proceso/obs siempre editables
+    }
+  });
+
   if(r.locked)tr.classList.add('row-locked');else tr.classList.remove('row-locked');
   updateOTTotal(r.otId);
 }
@@ -673,6 +689,35 @@ function applyEditLockState(){
       btn.style.background = '#8e44ad';
     }
   }
+
+  // Cabeceras OT:
+  // Nº OT, descripción y cliente SIEMPRE editables para todos
+  ots.forEach(ot=>{
+    const numEl=document.getElementById('otnum-'+ot.id);
+    const descEl=document.getElementById('otdesc-'+ot.id);
+    const cliEl=document.getElementById('otcli-'+ot.id);
+    [numEl,descEl,cliEl].forEach(el=>{
+      if(!el)return;
+      el.disabled = false; // nunca se bloquean
+    });
+
+    // Filas: solo controlamos fecha y botón borrar cerradas
+    ot.rows.forEach(r=>{
+      const tr=document.getElementById('row-'+r.id);
+      if(!tr)return;
+      const cells = tr.querySelectorAll('.cell');
+      cells.forEach((c,i)=>{
+        if(i===0){                // Fecha
+          c.disabled = !editUnlocked;
+        }else{
+          c.disabled = false;     // resto siempre editable
+        }
+      });
+      const bd = document.getElementById('bd-'+r.id);
+      if(bd) bd.disabled = r.locked && !editUnlocked;
+    });
+  });
+}
   // Actualizar estado de inputs según editUnlocked
   ots.forEach(ot=>{
     const numEl=document.getElementById('otnum-'+ot.id);
