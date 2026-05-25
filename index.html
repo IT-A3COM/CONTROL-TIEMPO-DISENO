@@ -167,6 +167,12 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
   <button class="btn-a" onclick="clearOTSearch()" style="background:#7f8c8d;color:#fff">Limpiar</button>
 </div>
 
+<div class="search-wrap">
+  <strong style="font-size:12px;color:#333">Buscar cliente</strong>
+  <input id="cli-search" type="text" placeholder="Nombre cliente..." oninput="searchCliente(this.value)">
+  <button class="btn-a" onclick="clearClienteSearch()" style="background:#7f8c8d;color:#fff">Limpiar</button>
+</div>
+
 <div class="color-legend" id="color-legend"></div>
 
 <div id="quote-box" style="background:#fff7d6;border:1px solid #f1d17a;border-radius:8px;padding:8px 10px;margin-bottom:8px;display:none;font-size:12px;font-weight:700;color:#6b4e00;"></div>
@@ -219,8 +225,8 @@ const OPERARIOS = ['Alberto Vivoras','Juanjo Cerdá','Juan Carlos','Juan Ramón'
 const PROCESOS  = ['Diseño','Maquetación','Retoque','Reunión','Formación','Varios'];
 
 const COLOR_LABELS = [
-  ['#3498db','Juanjo'],
   ['#9b59b6','Alberto'],
+  ['#3498db','Juanjo'],
   ['#f1c40f','Juanra'],
   ['#8e5a2b','Juan Carlos'],
   ['#ff77b4','Otros']
@@ -438,6 +444,41 @@ function searchOT(q){
     activateOT(ot.id);
   }
 }
+
+function searchCliente(q){
+  const text = String(q || '').trim().toLowerCase();
+  // Quitamos resaltes anteriores
+  document.querySelectorAll('.ot-panel').forEach(p=>p.style.outline='none');
+
+  if(!text){
+    applyOTFilter();
+    return;
+  }
+
+  // Buscamos la primera OT cuyo cliente contenga el texto
+  const ot = ots.find(o => (o.cliente || '').toLowerCase().includes(text));
+  if(!ot){
+    applyOTFilter();
+    return;
+  }
+
+  // Activamos y resaltamos esa OT
+  activateOT(ot.id);
+  const panel=document.getElementById('panel-ot-'+ot.id);
+  if(panel){
+    panel.style.outline='3px solid #2ecc71';
+    panel.style.outlineOffset='2px';
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+
+function clearClienteSearch(){
+  const i=document.getElementById('cli-search');
+  if(i)i.value='';
+  document.querySelectorAll('.ot-panel').forEach(p=>p.style.outline='none');
+  applyOTFilter();
+}
+
 function clearOTSearch(){
   const i=document.getElementById('ot-search');
   if(i)i.value='';
@@ -731,8 +772,8 @@ function renderOTPanel(ot){
       <label>Color</label>
       <select class="cell" style="width:120px" id="otcolor-${ot.id}"
         onchange="const o=ots.find(x=>x.id===${ot.id});o.color=this.value;updateTabLabel(${ot.id});autosave()">
-        <option value="#3498db" ${ot.color==='#3498db'?'selected':''}>Azul (Juanjo)</option>
         <option value="#9b59b6" ${ot.color==='#9b59b6'?'selected':''}>Morado (Alberto)</option>
+        <option value="#3498db" ${ot.color==='#3498db'?'selected':''}>Azul (Juanjo)</option>
         <option value="#f1c40f" ${ot.color==='#f1c40f'?'selected':''}>Amarillo (Juanra)</option>
         <option value="#8e5a2b" ${ot.color==='#8e5a2b'?'selected':''}>Marrón (Juan Carlos)</option>
         <option value="#ff77b4" ${ot.color==='#ff77b4'?'selected':''}>Rosa (Otros)</option>
