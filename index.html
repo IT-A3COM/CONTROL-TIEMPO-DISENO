@@ -346,7 +346,8 @@ function setOTFilter(tipo){
     if(btnA){btnA.style.background='#7f8c8d';btnA.style.color='#fff';}
     if(btnC){btnC.style.background='#1a1a2e';btnC.style.color='#fff';}
   }
-  applyOTFilter();
+ applyOTFilter();
+aplicarCarpetaOperario();
 }
 
 function applyOTFilter(){
@@ -365,6 +366,25 @@ function applyOTFilter(){
     const candidato = ots.find(o=> (otFilter==='abiertas') ? !o.cerrada : o.cerrada );
     if(candidato) activateOT(candidato.id);
   }
+}
+
+function aplicarCarpetaOperario(){
+  ots.forEach(ot=>{
+    const tab = document.getElementById('tab-ot-'+ot.id);
+    const panel = document.getElementById('panel-ot-'+ot.id);
+    if(!tab || !panel) return;
+
+    const esCerrada = !!ot.cerrada;
+    const visiblePorEstado = otFilter === 'abiertas' ? !esCerrada : esCerrada;
+
+    const dueno = getOperarioDueno(ot);
+    const visiblePorCarpeta = dueno === carpetaOperario;
+
+    const visible = visiblePorEstado && visiblePorCarpeta;
+
+    tab.style.display = visible ? '' : 'none';
+    panel.style.display = (visible && ot.id === activeOT) ? 'block' : 'none';
+  });
 }
 
 // Boot
@@ -414,11 +434,11 @@ async function boot(){
     createOT();
     setStatus('🆕 Sesión nueva — datos se guardarán en la nube','info');
   }
-  document.getElementById('loading-overlay').style.display='none';
-  applyEditLockState();
-  setOTFilter('abiertas');
+ document.getElementById('loading-overlay').style.display='none';
+applyEditLockState();
+setOTFilter('abiertas');
+aplicarCarpetaOperario();
 }
-
 function createOT(){
   const id=++otId;
   const ot={
@@ -787,6 +807,12 @@ function getRowFields(r){
   return{fecha:c[0]?.value||'',operario:c[1]?.value||'',proceso:c[2]?.value||'',obs:c[3]?.value||''};
 }
 
+function getOperarioDueno(ot){
+  if(!ot || !ot.rows || !ot.rows.length) return '';
+  const primera = ot.rows[0];
+  return primera.operario || '';
+}
+
 // Bloqueo/desbloqueo de edición
 function applyEditLockState(){
   const btn = document.getElementById('btn-edit-lock');
@@ -896,14 +922,17 @@ function showView(name){
   document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.toggle('active',['registro','resumen'][i]===name));
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  function setCarpetaOperario(nombre){
+}
+
+function setCarpetaOperario(nombre){
   carpetaOperario = nombre;
 
   const tabs = document.querySelectorAll('#operario-tabs .view-tab');
   tabs.forEach(t => {
     t.classList.toggle('active', t.textContent.includes(nombre));
   });
-}
+
+  aplicarCarpetaOperario();
 }
 
 // TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
