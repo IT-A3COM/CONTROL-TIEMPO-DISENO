@@ -87,6 +87,20 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 .total-cell{font-weight:700;color:#1a1a2e;font-size:12px}
 .btn-del{background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;font-weight:700}
 .btn-del:disabled{opacity:.3;cursor:default}
+.btn-move{
+  background:#7f8c8d;
+  color:#fff;
+  border:none;
+  border-radius:4px;
+  padding:2px 5px;
+  cursor:pointer;
+  font-size:10px;
+  margin-right:2px;
+}
+.btn-move:disabled{
+  opacity:.3;
+  cursor:default;
+}
 .ot-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px}
 .ot-footer-left{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ot-footer-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -369,6 +383,8 @@ function applyOTFilter(){
 }
 
 function aplicarCarpetaOperario(){
+  let primeraVisible = null;
+
   ots.forEach(ot=>{
     const tab = document.getElementById('tab-ot-'+ot.id);
     const panel = document.getElementById('panel-ot-'+ot.id);
@@ -383,7 +399,29 @@ function aplicarCarpetaOperario(){
     const visible = visiblePorEstado && visiblePorCarpeta;
 
     tab.style.display = visible ? '' : 'none';
-    panel.style.display = (visible && ot.id === activeOT) ? 'block' : 'none';
+
+    if(visible && primeraVisible === null){
+      primeraVisible = ot.id;
+    }
+  });
+
+  const actual = ots.find(o=>o.id===activeOT);
+  const actualVisible = actual &&
+    ((otFilter === 'abiertas' && !actual.cerrada) || (otFilter === 'cerradas' && actual.cerrada)) &&
+    getOperarioDueno(actual) === carpetaOperario;
+
+  if(!actualVisible){
+    activeOT = primeraVisible;
+  }
+
+  document.querySelectorAll('.ot-panel').forEach(p=>p.style.display='none');
+  if(activeOT !== null){
+    const panelActivo = document.getElementById('panel-ot-'+activeOT);
+    if(panelActivo) panelActivo.style.display = 'block';
+  }
+
+  document.querySelectorAll('.ot-tab').forEach(t=>{
+    t.classList.toggle('active', +t.dataset.id === activeOT);
   });
 }
 
@@ -576,7 +614,7 @@ function appendRowEl(otId,r,fields){
   tr.innerHTML=`
     <td style="color:#999;font-size:10px" class="rn"></td>
     <td><input class="cell" type="text" value="${fields.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
-    <td><select class="cell" onchange="autosave()">${opOptions(fields.operario||'')}</select></td>
+    <td><select class="cell" onchange="autosave();aplicarCarpetaOperario()">${opOptions(fields.operario||'')}</select></td>
     <td><select class="cell" onchange="autosave()">${prOptions(fields.proceso||'')}</select></td>
     <td>
       <input class="cell hora-inicio" type="text"
@@ -587,7 +625,7 @@ function appendRowEl(otId,r,fields){
     <td><div class="time-cell">
       <button class="btn-t btn-start" id="bs-${r.id}" onclick="pressStart(${r.id})">INICIO</button>
       <button class="btn-t btn-pause" id="bp-${r.id}" onclick="pressPause(${r.id})" disabled>⏸ PAUSA</button>
-      <button class="btn-t btn-end"   id="be-${r.id}" onclick="pressEnd(${r.id})"   disabled>FIN</button>
+      <button class="btn-t btn-end" id="be-${r.id}" onclick="pressEnd(${r.id})" disabled>FIN</button>
     </div></td>
     <td>
       <input class="cell hora-fin" type="text"
@@ -597,7 +635,11 @@ function appendRowEl(otId,r,fields){
     </td>
     <td class="total-cell"><span class="total-disp">—</span><span class="pause-info"></span></td>
     <td><input class="cell obs" type="text" value="${fields.obs||''}" placeholder="Notas…" oninput="autosave()"></td>
-    <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button></td>`;
+    <td>
+      <button class="btn-move" onclick="moveRowUp(${r.id},${otId})">▲</button>
+      <button class="btn-move" onclick="moveRowDown(${r.id},${otId})">▼</button>
+      <button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button>
+    </td>`;
   tbody.appendChild(tr);
   renderRow(r);
 }
@@ -744,8 +786,54 @@ function delRow(id,otId){
   refreshRowNums(otId);
   updateOTTotal(otId);
   updateTabLabel(otId);
+  aplicarCarpetaOperario();
   autosave();
 }
+
+function moveRowUp(id,otId){
+  const ot = ots.find(o=>o.id===otId);
+  if(!ot) return;
+  const i = ot.rows.findIndex(r=>r.id===id);
+  if(i<=0) return;
+
+  [ot.rows[i-1], ot.rows[i]] = [ot.rows[i], ot.rows[i-1]];
+
+  const tbody = document.getElementById('tbody-'+otId);
+  const tr = document.getElementById('row-'+id);
+  const prev = document.getElementById('row-'+ot.rows[i].id);
+  if(tbody && tr && prev){
+    tbody.insertBefore(tr, prev);
+  }
+
+  refreshRowNums(otId);
+  updateOTTotal(otId);
+  updateTabLabel(otId);
+  aplicarCarpetaOperario();
+  autosave();
+}
+
+function moveRowDown(id,otId){
+  const ot = ots.find(o=>o.id===otId);
+  if(!ot) return;
+  const i = ot.rows.findIndex(r=>r.id===id);
+  if(i<0 || i>=ot.rows.length-1) return;
+
+  [ot.rows[i], ot.rows[i+1]] = [ot.rows[i+1], ot.rows[i]];
+
+  const tbody = document.getElementById('tbody-'+otId);
+  const tr = document.getElementById('row-'+id);
+  const next = document.getElementById('row-'+ot.rows[i].id);
+  if(tbody && tr && next){
+    tbody.insertBefore(next, tr);
+  }
+
+  refreshRowNums(otId);
+  updateOTTotal(otId);
+  updateTabLabel(otId);
+  aplicarCarpetaOperario();
+  autosave();
+}
+
 function allRows(){return ots.flatMap(o=>o.rows)}
 function refreshRowNums(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
