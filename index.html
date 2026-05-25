@@ -635,7 +635,7 @@ function appendRowEl(otId,r,fields){
   tr.innerHTML=`
     <td style="color:#999;font-size:10px" class="rn"></td>
     <td><input class="cell" type="text" value="${fields.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
-    <td><select class="cell" onchange="autosave();applyOperarioFilter()">${opOptions(fields.operario||'')}</select></td>
+  <td><select class="cell" onchange="autosave()">${opOptions(fields.operario||'')}</select></td>
     <td><select class="cell" onchange="autosave()">${prOptions(fields.proceso||'')}</select></td>
     <td>
       <input class="cell hora-inicio" type="text"
@@ -1061,6 +1061,9 @@ function showView(name){
   document.getElementById('view-'+name).classList.add('active');
 }
 
+<button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
+<button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
+
 function setCarpetaOperario(nombre){
   carpetaOperario = nombre;
 
@@ -1075,36 +1078,6 @@ function setCarpetaOperario(nombre){
   aplicarCarpetaOperario();
 }
 
-function setOperarioView(nombre){
-  operarioFilter = nombre; // null = todos
-  // Marcar pestañas
-  const tabs = document.querySelectorAll('.view-tab');
-  tabs.forEach(t => t.classList.remove('active'));
-  if(nombre === null){
-    if (tabs[0]) tabs[0].classList.add('active'); // Todas las OT
-  }else{
-    if (tabs[1]) tabs[1].classList.add('active'); // Juanjo
-  }
-  // Mostrar panel de registro
-  document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('view-registro').classList.add('active');
-
-  applyOperarioFilter();
-}
-
-function applyOperarioFilter(){
-  allRows().forEach(r=>{
-    const tr = document.getElementById('row-'+r.id);
-    if(!tr) return;
-    const cells = tr.querySelectorAll('.cell');
-    const operario = cells[1]?.value || '';
-    if(!operarioFilter || operario === operarioFilter){
-      tr.style.display = '';
-    }else{
-      tr.style.display = 'none';
-    }
-  });
-}
 
 // TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
 function printOT(id){
