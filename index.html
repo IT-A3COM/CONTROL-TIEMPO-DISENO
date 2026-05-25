@@ -382,27 +382,7 @@ function applyOTFilter(){
 }
 
 function aplicarCarpetaOperario(){
-  let primeraVisible = null;
-
-  ots.forEach(ot=>{
-    const tab = document.getElementById('tab-ot-'+ot.id);
-    const panel = document.getElementById('panel-ot-'+ot.id);
-    if(!tab || !panel) return;
-
-    const esCerrada = !!ot.cerrada;
-    const visiblePorEstado = otFilter === 'abiertas' ? !esCerrada : esCerrada;
-
-    const dueno = getOperarioDueno(ot);
-    const visiblePorCarpeta = dueno === carpetaOperario;
-
-    const visible = visiblePorEstado && visiblePorCarpeta;
-
-    tab.style.display = visible ? '' : 'none';
-
-    if(visible && primeraVisible === null){
-      primeraVisible = ot.id;
-    }
-  });
+}
 
   const actual = ots.find(o=>o.id===activeOT);
   const actualVisible = actual &&
@@ -1014,8 +994,6 @@ function setCarpetaOperario(nombre){
   tabs.forEach(t => {
     t.classList.toggle('active', t.textContent.includes(nombre));
   });
-
-  aplicarCarpetaOperario();
 }
 
 // TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
