@@ -87,20 +87,6 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 .total-cell{font-weight:700;color:#1a1a2e;font-size:12px}
 .btn-del{background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;font-weight:700}
 .btn-del:disabled{opacity:.3;cursor:default}
-.btn-move{
-  background:#7f8c8d;
-  color:#fff;
-  border:none;
-  border-radius:4px;
-  padding:2px 5px;
-  cursor:pointer;
-  font-size:10px;
-  margin-right:2px;
-}
-.btn-move:disabled{
-  opacity:.3;
-  cursor:default;
-}
 .ot-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px}
 .ot-footer-left{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ot-footer-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -171,38 +157,12 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 </div>
 
 <div class="view-panel active" id="view-registro">
-
-<div class="btn-tabs" id="operario-tabs" style="margin-bottom:8px;">
-  <button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Juan Carlos')">👷 Juan Carlos</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Juan Ramón')">👷 Juan Ramón</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Otro...')">👷 Otro...</button>
-</div>
-
-  <!-- Carpetas por operario -->
-  <div class="btn-tabs" id="operario-tabs" style="margin-bottom:8px;">
-    <button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
-    <button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
-    <button class="view-tab" onclick="setCarpetaOperario('Juan Carlos')">👷 Juan Carlos</button>
-    <button class="view-tab" onclick="setCarpetaOperario('Juan Ramón')">👷 Juan Ramón</button>
-    <button class="view-tab" onclick="setCarpetaOperario('Otro...')">👷 Otro...</button>
-  </div>
-
   <!-- Filtro Abiertas / OT finalizadas -->
-  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
-    <strong style="font-size:12px;color:#333;">OT</strong>
-    <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff;">Abiertas</button>
-    <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff;">OT finalizadas</button>
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+    <strong style="font-size:12px;color:#333">OT:</strong>
+    <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff">Abiertas</button>
+    <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff">OT finalizadas</button>
   </div>
-
-  <div class="ot-tabs-bar" id="ot-tabs-bar">
-    <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
-  </div>
-
-  <div id="ot-panels"></div>
-
-</div>
 
   <div class="ot-tabs-bar" id="ot-tabs-bar">
     <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
@@ -243,9 +203,6 @@ let saveTimer=null, pendingSave=false, isSaving=false;
 let editUnlocked = false;
 const EDIT_PASSWORD = 'A3com2026';
 let otFilter = 'abiertas'; // 'abiertas' o 'cerradas'
-let carpetaOperario = 'Alberto Vivoras'; // carpeta activa al inicio
-let operarioFilter = null; // null = todos, o nombre del operario
-let carpetaOperario = 'Alberto Vivoras';
 
 const pad=n=>String(n).padStart(2,'0');
 function fmtTime(ts){if(!ts)return'--:--:--';const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
@@ -380,9 +337,7 @@ function setOTFilter(tipo){
     if(btnC){btnC.style.background='#1a1a2e';btnC.style.color='#fff';}
   }
   applyOTFilter();
-  aplicarCarpetaOperario();
 }
-
 
 function applyOTFilter(){
   ots.forEach(ot=>{
@@ -399,43 +354,6 @@ function applyOTFilter(){
   if(actual && ((otFilter==='abiertas'&&actual.cerrada)||(otFilter==='cerradas'&&!actual.cerrada))){
     const candidato = ots.find(o=> (otFilter==='abiertas') ? !o.cerrada : o.cerrada );
     if(candidato) activateOT(candidato.id);
-  }
-}
-
-function aplicarCarpetaOperario(){
-  ots.forEach(ot => {
-    const tab   = document.getElementById('tab-ot-' + ot.id);
-    const panel = document.getElementById('panel-ot-' + ot.id);
-    if (!tab || !panel) return;
-
-    // Filtro Abiertas / Cerradas que ya usas
-    const esCerrada = !!ot.cerrada;
-    const visiblePorEstado = otFilter === 'abiertas' ? !esCerrada : esCerrada;
-
-    // Operario dueño (primera línea)
-    const dueno = getOperarioDueno(ot);
-    const visiblePorCarpeta = (dueno === carpetaOperario);
-
-    const visible = visiblePorEstado && visiblePorCarpeta;
-
-    tab.style.display   = visible ? 'inline-flex' : 'none';
-    panel.style.display = (visible && ot.id === activeOT) ? 'block' : 'none';
-  });
-
-  // Asegurar que la OT activa pertenece a la carpeta
-  let actual = ots.find(o => o.id === activeOT);
-  if (!actual || getOperarioDueno(actual) !== carpetaOperario) {
-    const candidato = ots.find(o => {
-      const esCerrada = !!o.cerrada;
-      const visiblePorEstado = otFilter === 'abiertas' ? !esCerrada : esCerrada;
-      if (!visiblePorEstado) return false;
-      return getOperarioDueno(o) === carpetaOperario;
-    });
-    if (candidato) {
-      activateOT(candidato.id);
-    } else {
-      activeOT = null;
-    }
   }
 }
 
@@ -489,11 +407,6 @@ async function boot(){
   document.getElementById('loading-overlay').style.display='none';
   applyEditLockState();
   setOTFilter('abiertas');
-    document.getElementById('loading-overlay').style.display='none';
-  applyEditLockState();
-  setOTFilter('abiertas');
-  applyCarpetaOperario();
-
 }
 
 function createOT(){
@@ -512,9 +425,7 @@ function createOT(){
   addRow(id);
   activateOT(id);
   autosave();
-    aplicarCarpetaOperario();
 }
-
 
 function activateOT(id){
   activeOT=id;
@@ -635,7 +546,7 @@ function appendRowEl(otId,r,fields){
   tr.innerHTML=`
     <td style="color:#999;font-size:10px" class="rn"></td>
     <td><input class="cell" type="text" value="${fields.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
-  <td><select class="cell" onchange="autosave()">${opOptions(fields.operario||'')}</select></td>
+    <td><select class="cell" onchange="autosave()">${opOptions(fields.operario||'')}</select></td>
     <td><select class="cell" onchange="autosave()">${prOptions(fields.proceso||'')}</select></td>
     <td>
       <input class="cell hora-inicio" type="text"
@@ -656,11 +567,7 @@ function appendRowEl(otId,r,fields){
     </td>
     <td class="total-cell"><span class="total-disp">—</span><span class="pause-info"></span></td>
     <td><input class="cell obs" type="text" value="${fields.obs||''}" placeholder="Notas…" oninput="autosave()"></td>
-     <td>
-      <button class="btn-move" onclick="moveRowUp(${r.id},${otId})">▲</button>
-      <button class="btn-move" onclick="moveRowDown(${r.id},${otId})">▼</button>
-      <button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button>
-    </td>`;
+    <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button></td>`;
   tbody.appendChild(tr);
   renderRow(r);
 }
@@ -734,22 +641,10 @@ function manualTimeChange(rowId, tipo, valor){
 }
 
 function calcNetSec(r){
- if(!r.startTs) return 0;
-
-  // Momento final:
-  // - si tiene endTs, hasta endTs
-  // - si no tiene endTs pero está en pausa, hasta el inicio de la pausa
-  // - si no tiene endTs ni pausa, hasta ahora mismo
-  const ahora = Date.now();
-  const finBase = r.endTs
-    ? r.endTs
-    : (r.pauseStart ? r.pauseStart : ahora);
-
-  const gross = Math.floor((finBase - r.startTs) / 1000);
-
-  const paused = (r.pauses || []).reduce((a,p)=>a + Math.floor((p.to-p.from)/1000), 0);
-
-  return Math.max(0, gross - paused);
+  if(!r.startTs||!r.endTs)return 0;
+  const gross=Math.floor((r.endTs-r.startTs)/1000);
+  const paused=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
+  return Math.max(0,gross-paused);
 }
 
 function renderRow(r){
@@ -794,18 +689,10 @@ function renderRow(r){
 
   if(bd) bd.disabled = r.locked && !editUnlocked;
 
-  const pausedSec = (r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
-  const netSec = calcNetSec(r);
-
-  if (r.pauseStart) {
-    // En pausa: mostramos solo el tiempo neto trabajado hasta ahora, en morado
-    if (pi) pi.textContent = '⏸ pausado · tiempo neto: ' + fmtSecShort(netSec);
-  } else {
-    // No está en pausa: mostramos info de pausas (si las hay)
-    if (pi) pi.textContent = pausedSec ? '⏸ pausado: ' + fmtSecShort(pausedSec) : '';
-  }
-
-  if (td) td.textContent = netSec ? fmtSecShort(netSec) : '—';
+  const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
+  if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecShort(pausedSec):'';
+  const s=calcNetSec(r);
+  if(td)td.textContent=s?fmtSec(s):(r.pauseStart?'en pausa…':'—');
 
   const cells = tr.querySelectorAll('.cell');
   cells.forEach((c,i)=>{
@@ -827,53 +714,6 @@ function delRow(id,otId){
   refreshRowNums(otId);
   updateOTTotal(otId);
   updateTabLabel(otId);
-  autosave();
-}
-function moveRowUp(rowId, otId){
-  const ot = ots.find(o => o.id === otId);
-  if (!ot) return;
-  const idx = ot.rows.findIndex(r => r.id === rowId);
-  if (idx <= 0) return; // ya está arriba o no existe
-
-  // Intercambiar en el array
-  const tmp = ot.rows[idx-1];
-  ot.rows[idx-1] = ot.rows[idx];
-  ot.rows[idx] = tmp;
-
-  // Reordenar en el DOM
-  const tbody = document.getElementById('tbody-' + otId);
-  const row = document.getElementById('row-' + rowId);
-  const prev = row ? row.previousElementSibling : null;
-  if (tbody && row && prev) {
-    tbody.insertBefore(row, prev);
-  }
-
-  refreshRowNums(otId);
-  updateOTTotal(otId);
-  autosave();
-}
-
-function moveRowDown(rowId, otId){
-  const ot = ots.find(o => o.id === otId);
-  if (!ot) return;
-  const idx = ot.rows.findIndex(r => r.id === rowId);
-  if (idx === -1 || idx >= ot.rows.length - 1) return; // ya está abajo o no existe
-
-  // Intercambiar en el array
-  const tmp = ot.rows[idx+1];
-  ot.rows[idx+1] = ot.rows[idx];
-  ot.rows[idx] = tmp;
-
-  // Reordenar en el DOM
-  const tbody = document.getElementById('tbody-' + otId);
-  const row = document.getElementById('row-' + rowId);
-  const next = row ? row.nextElementSibling : null;
-  if (tbody && row && next) {
-    tbody.insertBefore(next, row);
-  }
-
-  refreshRowNums(otId);
-  updateOTTotal(otId);
   autosave();
 }
 function allRows(){return ots.flatMap(o=>o.rows)}
@@ -935,11 +775,6 @@ function getRowFields(r){
   const tr=document.getElementById('row-'+r.id);
   const c=tr?tr.querySelectorAll('.cell'):[];
   return{fecha:c[0]?.value||'',operario:c[1]?.value||'',proceso:c[2]?.value||'',obs:c[3]?.value||''};
-}
-function getOperarioDueno(ot){
-  if (!ot || !ot.rows || !ot.rows.length) return '';
-  const primera = ot.rows[0];
-  return primera.operario || '';
 }
 
 // Bloqueo/desbloqueo de edición
@@ -1048,36 +883,10 @@ function buildResumen(){
 }
 
 function showView(name){
-  document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.remove('active'));
-  if(name === 'registro'){
-    const tabs = document.querySelectorAll('.view-tab');
-    if (tabs[0]) tabs[0].classList.add('active'); // Todas las OT
-  }else if(name === 'resumen'){
-    const tabs = document.querySelectorAll('.view-tab');
-    const last = tabs[tabs.length-1];
-    if (last) last.classList.add('active'); // Resumen
-  }
+  document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.toggle('active',['registro','resumen'][i]===name));
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
 }
-
-<button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
-<button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
-
-function setCarpetaOperario(nombre){
-  carpetaOperario = nombre;
-
-  // Marcar pestaña activa en la barra de operarios
-  const tabs = document.querySelectorAll('#operario-tabs .view-tab');
-  tabs.forEach(t => {
-    const esEste = t.textContent.includes(nombre);
-    t.classList.toggle('active', esEste);
-  });
-
-  // Ajustar qué OT se ven
-  aplicarCarpetaOperario();
-}
-
 
 // TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
 function printOT(id){
