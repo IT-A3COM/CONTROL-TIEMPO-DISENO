@@ -40,7 +40,7 @@ h1{font-size:15px;font-weight:700;text-align:center;margin-bottom:2px;color:#1a1
 #save-status.info{color:#2980b9;font-weight:700}
 .top-btns{display:flex;justify-content:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 .ot-tabs-bar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;border-bottom:2px solid #1a1a2e;margin-bottom:0}
-.ot-tab{padding:6px 14px;border:1px solid #bbb;border-bottom:none;border-radius:5px 5px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#dde0e8;color:#444;display:flex;align-items:center;gap:6px;position:relative;padding-left:22px}
+.ot-tab{padding:6px 14px;border:1px solid #bbb;border-bottom:none;border-radius:5px 5px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#dde0e8;color:#444;display:flex;align-items:center;gap:6px}
 .ot-tab.active{background:#1a1a2e;color:#fff;border-color:#1a1a2e}
 .ot-tab.estado-verde{background:#27ae60;color:#fff;border-color:#1e8449}
 .ot-tab.estado-verde.active{background:#1e8449;border-color:#1e8449}
@@ -132,40 +132,60 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 #modal-box .modal-btns button{padding:8px 22px;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer}
 #modal-btn-cancel{background:#ccc;color:#333}
 #modal-btn-ok{background:#c0392b;color:#fff}
+
+/* NUEVO: color en pestañas, leyenda, buscador, frases */
+.ot-color-dot{width:10px;height:24px;border-radius:3px;display:inline-block;flex:0 0 auto;border:1px solid rgba(255,255,255,.65)}
+.tab-head{display:flex;align-items:center;gap:6px}
+.color-legend{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.color-chip{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #d7dbe3;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700;color:#333;cursor:pointer}
+.color-chip .sw{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.1)}
+.search-wrap{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.search-wrap input{border:1px solid #bbb;border-radius:4px;padding:5px 8px;font-size:12px;min-width:170px}
 </style>
 </head>
 <body>
-
 <div id="loading-overlay">
   <div class="spin"></div>
-  <p>Cargando tus datos…</p>
+  <p>Cargando datos..........</p>
 </div>
 
 <h1>Control de Tiempos por Orden de Trabajo</h1>
-<div class="subtitle">Gestiona múltiples OT simultáneamente · Pausa y reanuda cada línea</div>
-<div id="save-status" class="info">Iniciando…</div>
+<div class="subtitle">Gestiona múltiples OT simultáneamente. Pausa y reanuda cada línea.</div>
+
+<div id="save-status" class="info">Iniciando...</div>
 
 <div class="top-btns">
-  <button class="btn-a btn-save-now" onclick="saveNow()">💾 Guardar ahora</button>
-  <button class="btn-a btn-excel" onclick="exportResumenExcel()">📥 Exportar todo a Excel</button>
-  <button class="btn-a" id="btn-edit-lock" onclick="toggleEditLock()" style="background:#8e44ad;color:#fff">🔒 Edición bloqueada</button>
+  <button class="btn-a btn-save-now" onclick="saveNow()">Guardar ahora</button>
+  <button class="btn-a btn-excel" onclick="exportResumenExcel()">Exportar todo a Excel</button>
+  <button class="btn-a" onclick="showRandomQuote()" style="background:#8e44ad;color:#fff">Ánimo oficina</button>
+  <button class="btn-a" id="btn-edit-lock" onclick="toggleEditLock()" style="background:#8e44ad;color:#fff">Edición bloqueada</button>
 </div>
 
+<div class="search-wrap">
+  <strong style="font-size:12px;color:#333">Buscar OT</strong>
+  <input id="ot-search" type="text" placeholder="Ej: OT-012 o 012" oninput="searchOT(this.value)">
+  <button class="btn-a" onclick="clearOTSearch()" style="background:#7f8c8d;color:#fff">Limpiar</button>
+</div>
+
+<div class="color-legend" id="color-legend"></div>
+
+<div id="quote-box" style="background:#fff7d6;border:1px solid #f1d17a;border-radius:8px;padding:8px 10px;margin-bottom:8px;display:none;font-size:12px;font-weight:700;color:#6b4e00;"></div>
+
 <div class="btn-tabs">
-  <button class="view-tab active" onclick="showView('registro')">📋 Registro de OT</button>
-  <button class="view-tab" onclick="showView('resumen');buildResumen()">📊 Resumen global</button>
+  <button class="view-tab active" onclick="showView('registro')">Registro de OT</button>
+  <button class="view-tab" onclick="showView('resumen')">Resumen global</button>
 </div>
 
 <div class="view-panel active" id="view-registro">
-  <!-- Filtro Abiertas / OT finalizadas -->
+  <!-- Filtro Abiertas / Cerradas -->
   <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-    <strong style="font-size:12px;color:#333">OT:</strong>
+    <strong style="font-size:12px;color:#333">OT</strong>
     <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff">Abiertas</button>
     <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff">OT finalizadas</button>
   </div>
 
   <div class="ot-tabs-bar" id="ot-tabs-bar">
-    <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
+    <button class="btn-new-ot" onclick="createOT()">Nueva OT</button>
   </div>
   <div id="ot-panels"></div>
 </div>
@@ -173,7 +193,7 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 <div class="view-panel" id="view-resumen">
   <div class="resumen-section">
     <div class="grand-total-box">
-      <span style="font-size:13px;font-weight:700">⏱ Tiempo total registrado</span>
+      <span style="font-size:13px;font-weight:700">Tiempo total registrado</span>
       <span class="gt-val" id="gt-val">0h 00min</span>
     </div>
     <div class="resumen-grid" id="resumen-grid"></div>
@@ -184,7 +204,7 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 
 <div id="modal-overlay">
   <div id="modal-box">
-    <h3>⚠️ Eliminar OT</h3>
+    <h3>Eliminar OT</h3>
     <p id="modal-msg"></p>
     <div class="modal-btns">
       <button id="modal-btn-cancel" onclick="modalCancel()">Cancelar</button>
@@ -194,37 +214,248 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 </div>
 
 <script>
-// Constantes
+// ----------------- CONSTANTES / ESTADO -----------------
 const OPERARIOS = ['Alberto Vivoras','Juanjo Cerdá','Juan Carlos','Juan Ramón','Otro'];
 const PROCESOS  = ['Diseño','Maquetación','Retoque','Reunión','Formación','Varios'];
 
+const COLOR_LABELS = [
+  ['#3498db','Juanjo'],
+  ['#9b59b6','Alberto'],
+  ['#f1c40f','Juanra'],
+  ['#8e5a2b','Juan Carlos'],
+  ['#ff77b4','Otros']
+];
+
+const QUOTES = [
+  'Hoy venimos a cuadrar grids y descuadrar problemas.',
+  'El café no maqueta, pero sin café tampoco maquetamos.',
+  'Si el cliente dice “es solo cambiar un color”, sospecha.',
+  'Photoshop corrige muchas cosas, pero no las prisas.',
+  'Guardar como final_def_OK_ahora_sí_v3 es un estilo de vida.',
+  'Si pesa 2 GB no es un archivo, es un ecosistema.',
+  '“Ya que estás” son tres palabras que valen dos horas.',
+  'Cuando dudes, alinea y respira.',
+  'Nada da más miedo que un PSD sin grupos.',
+  'Layout limpio, cabeza limpia.',
+  'Hoy vamos a hacer algo tan claro que ni el cliente tenga dudas.',
+  'El briefing dice una cosa, el WhatsApp dice otra y el diseño llora.',
+  'La capa “copia de copia” ya es patrimonio de la humanidad.',
+  'Si el logo se ve poco, aparecerá por arte de magia más grande.',
+  'El botón de deshacer es nuestro psicólogo de confianza.',
+  'Una revisión a tiempo evita cinco correos con copia oculta.',
+  '“Lo quiero moderno pero clásico” es nuestro deporte extremo.',
+  'Si todo es importante, el diseño se va de vacaciones.',
+  'El lorem ipsum nunca se ha quejado de los cambios de última hora.',
+  'No es feo, es “versión previa sin diseño”.',
+  'La imprenta siempre tiene la última palabra, pero no siempre la razón.',
+  'Tipografía rara, problema caro.',
+  'Un buen kerning ahorra discusiones existenciales.',
+  'En esta oficina hay más fuentes que sillas.',
+  'El verdadero filtro es ver un RGB en CMYK y seguir sonriendo.',
+  'Hoy no es lunes, es “día de revisar lo del viernes”.',
+  'Nada viaja más rápido que un “¿para cuándo lo tienes?”.',
+  'La creatividad entra mejor con café y sin reuniones.',
+  'Si el PDF abre a la primera, hoy es un buen día.',
+  'El cliente siempre tiene la razón… hasta que imprime.',
+  'No es que sea urgente, es que lo descubrieron tarde.',
+  '“Solo una versión más” tiene la misma energía que “una ronda más”.',
+  'Si el archivo se llama FINAL_FINAL_DE_VERDAD, desconfía.',
+  'El diseño no grita, susurra “hazme bien”.',
+  'Los píxeles también necesitan cariño, no solo zoom.',
+  'Una OT cerrada da paz mental y aire al cerebro.',
+  'El peor enemigo del diseño es el “ya que estás”.',
+  'Hoy no venimos a improvisar, venimos a salvar PDFs.',
+  'Si la carpeta dice ORDEN, es que ya hubo caos antes.',
+  'El mejor efecto especial es que todo funcione.',
+  'No es saturación, es “modo festival visual”.',
+  'Si la maqueta encaja a la primera, algo raro pasa.',
+  'El cliente pide “algo sencillo” y manda un PDF de 40 páginas.',
+  'Ajustar interlineado también cuenta como meditación.',
+  'El tiempo real de diseño es horas × correos del cliente.',
+  'Sin prisa pero sin briefing tampoco se puede.',
+  'El modo noche se inventó para diseñadores con entregas.',
+  'Algunos cambios son como Comic Sans: nadie los pidió.',
+  '“Hazlo más corporativo” es la versión B de “hazlo bonito”.',
+  'Diseñar es explicar con colores lo que el cliente explica con audios.',
+  'Un buen diseño hace que parezca fácil lo que no lo fue.',
+  'Los cambios de última hora se miden en cafés, no en minutos.',
+  'No hay diseño imposible, solo tiempos imposibles.',
+  'El verdadero reto no es el diseño, es el nombre del archivo.',
+  'Si no está alineado, el ojo lo nota y el jefe también.',
+  'Cuando el cliente dice “lo habéis clavado”, sube una vida extra.',
+  'Un buen moodboard ahorra tres reuniones.',
+  'El silencio en la sala se rompe con “no me convence la tipografía”.',
+  'Cambiar un color no es solo cambiar un color, es abrir un universo.',
+  'Lo quiero igual pero distinto: clásico de la casa.',
+  'Si hay más revisiones que capas, sabemos cómo acaba el día.',
+  'La carpeta de recursos se llama “NO_TOCAR” por nuestra salud mental.',
+  'El mejor filtro es el ojo del diseñador, no el de Instagram.',
+  'Cuando hay prisa, la impresora entra en modo filosófico.',
+  'El diseño se acaba cuando se imprime, no cuando se envía el mail.',
+  'Hoy el objetivo es que el logo no crezca por correo.',
+  '“Solo una cosa más” nunca es solo una cosa.',
+  'Hay blancos que no son blancos, son decisiones de diseño.',
+  'El diseño minimalista no significa hacer menos, significa pensar más.',
+  'Detrás de cada “rápido” hay un archivo llamado “versión_27”.',
+  'La verdadera magia está en guardar antes de que pete.',
+  'Nada une más a un equipo que un pantone traicionero.',
+  'Si el cliente manda referencia en Word, hoy toca sufrir.',
+  'La reunión sin croquis termina en conversación infinita.',
+  'La cuadrícula no esclaviza, salva vidas.',
+  'Las prisas son enemigas del vector.',
+  'En esta oficina se respira café y se exporta en PDF/X-1a.',
+  'Un diseño sin margen es como un mail sin asunto: peligro.',
+  'Si el logo entra en favicon, ya puedes respirar.',
+  'Cuando todo sale a la primera, revisa dos veces.',
+  'El cliente quiere sorpresa, pero que parezca lo de siempre.',
+  'La inspiración llega, pero que no llegue un viernes a las 19:00.',
+  'Detrás de cada “queda genial” hay 10 “más a la izquierda”.',
+  'Hacer scroll por capas también cuenta como cardio.',
+  'Nada es más largo que un “te paso unas correcciones rápidas”.',
+  'Cada carpeta “ANTERIORES” es un documental de guerra.',
+  'El color corporativo del estudio es el #CaféOscuro.',
+  'No hay mala idea, solo mala hora para proponerla.',
+  'Maquetar tablas es como hacer tetris con paciencia.',
+  '“Solo textos” es el mayor engaño del sector.',
+  'Si la tipografía habla, el diseño escucha.',
+  'El botón guardar se pulsa por reflejo, como pestañear.',
+  'Hoy no se borra nada, se “desactiva la capa por si acaso”.',
+  'El cliente dice “no tengo prisa”, pero el correo llega en mayúsculas.',
+  'La verdadera zona de confort es el panel de capas bien ordenado.',
+  'Si el archivo se abre sin fuentes faltantes, eso es felicidad.',
+  'Cuando hay coordinación, el PDF pesa menos (mentira, pero ayuda a creerlo).',
+  'La herramienta más usada no es el pincel, es “alinear al centro”.',
+  'Se llama diseño, pero a veces parece magia con plazo de entrega.',
+  'Si todo encaja a la primera, revisa que no falte nada.',
+  'Más que diseñar, domesticamos cambios de última hora.',
+  'El mayor bug es un cliente con Paint y demasiada confianza.',
+  'Que no falte café, que sobrará feedback.',
+  'Diseño bueno, día bueno; diseño aprobado a la primera, día histórico.',
+  'No tenemos capa de invisibilidad, pero sí capa de “backup”.',
+  'Si el mail empieza por “no te asustes”, asústate.',
+  'Entre hacer bonito y que se entienda, siempre gana que se entienda.'
+];
+
 let ots=[], otId=0, rowId=0, activeOT=null;
 let saveTimer=null, pendingSave=false, isSaving=false;
-let editUnlocked = false;
-const EDIT_PASSWORD = 'A3com2026';
-let otFilter = 'abiertas'; // 'abiertas' o 'cerradas'
-let carpetaOperario = 'Alberto Vivoras';
+let editUnlocked=false;
+const EDIT_PASSWORD='A3com2026';
+let otFilter='abiertas';
+let colorFilter='todos';
 
+// ---------- UTILIDADES ----------
 const pad=n=>String(n).padStart(2,'0');
-function fmtTime(ts){if(!ts)return'--:--:--';const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
-function fmtSec(s){return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min '+pad(s%60)+'s'}
-function fmtSecShort(s){return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min'}
-function today(){return new Date().toLocaleDateString('es-ES')}
-
-function opOptions(sel=''){
-  return'<option value="">— Operario —</option>'+OPERARIOS.map(o=>`<option${o===sel?' selected':''}>${o}</option>`).join('');
+function fmtTime(ts){
+  if(!ts)return'--:--:--';
+  const d=new Date(ts);
+  return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 }
-function prOptions(sel=''){
-  return'<option value="">— Proceso —</option>'+PROCESOS.map(p=>`<option${p===sel?' selected':''}>${p}</option>`).join('');
+function fmtSec(s){
+  return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min '+pad(s%60)+'s';
 }
+function fmtSecShort(s){
+  return Math.floor(s/3600)+'h '+pad(Math.floor((s%3600)/60))+'min';
+}
+function today(){return new Date().toLocaleDateString('es-ES');}
 
 function setStatus(msg,cls,autoClear=true){
   const el=document.getElementById('save-status');
-  el.textContent=msg;el.className=cls;el.style.opacity='1';
-  if(autoClear)setTimeout(()=>{el.style.opacity='0';},3000);
+  if(!el)return;
+  el.textContent=msg;
+  el.className=cls;
+  el.style.opacity=1;
+  if(autoClear) setTimeout(()=>{el.style.opacity=0;},3000);
 }
 
-// Modal
+// ---------- FRASES / LEYENDA ----------
+function showRandomQuote(){
+  if(!QUOTES.length)return;
+  const q=QUOTES[Math.floor(Math.random()*QUOTES.length)];
+  const box=document.getElementById('quote-box');
+  if(box){
+    box.textContent=q;
+    box.style.display='block';
+  }
+}
+function renderLegend(){
+  const el = document.getElementById('color-legend');
+  if (!el) return;
+
+  let html = '';
+
+  // Botón "Todos"
+  html += '' +
+    '<button class="color-chip" data-color="todos">' +
+      '<span class="sw" style="background:#cfd6e1"></span>' +
+      'Todos' +
+    '</button>';
+
+  // Botones por color
+  COLOR_LABELS.forEach(([color, label])=>{
+    html += '' +
+      '<button class="color-chip" data-color="'+color+'">' +
+        '<span class="sw" style="background:'+color+'"></span>' +
+        label +
+      '</button>';
+  });
+
+  el.innerHTML = html;
+
+  // Delegamos el click en JS (así evitamos líos de comillas en onclick)
+  el.querySelectorAll('.color-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const c = btn.getAttribute('data-color') || 'todos';
+      setColorFilter(c);
+    });
+  });
+}
+
+function setColorFilter(color){
+  colorFilter = color;
+  applyOTFilter();
+}
+
+// ---------- BUSCADOR ----------
+function normalizeOTQuery(q){
+  return String(q||'').trim().toUpperCase()
+    .replace(/^OT[-\s]*/,'')
+    .replace(/^0+/,'');
+}
+function getOTByQuery(q){
+  const n=normalizeOTQuery(q);
+  if(!n)return null;
+  return ots.find(o=>normalizeOTQuery(o.num).includes(n)||String(o.id)===n) || null;
+}
+function searchOT(q){
+  const ot=getOTByQuery(q);
+  document.querySelectorAll('.ot-panel').forEach(p=>p.style.outline='none');
+  if(!ot){applyOTFilter();return;}
+  const panel=document.getElementById('panel-ot-'+ot.id);
+  if(panel){
+    panel.style.outline='3px solid #f39c12';
+    panel.style.outlineOffset='2px';
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    activateOT(ot.id);
+  }
+}
+function clearOTSearch(){
+  const i=document.getElementById('ot-search');
+  if(i)i.value='';
+  document.querySelectorAll('.ot-panel').forEach(p=>p.style.outline='none');
+  applyOTFilter();
+}
+
+// ---------- SELECTS ----------
+function opOptions(sel=''){
+  return '<option value="">— Operario —</option>'+
+    OPERARIOS.map(o=>`<option${o===sel?' selected':''}>${o}</option>`).join('');
+}
+function prOptions(sel=''){
+  return '<option value="">— Proceso —</option>'+
+    PROCESOS.map(p=>`<option${p===sel?' selected':''}>${p}</option>`).join('');
+}
+
+// ---------- MODAL ----------
 let modalCallback=null;
 function showModal(msg,cb){
   document.getElementById('modal-msg').textContent=msg;
@@ -241,13 +472,11 @@ function modalCancel(){
   modalCallback=null;
 }
 
-// Firestore storage
+// ---------- FIRESTORE ----------
 async function loadFromStorage(){
   try{
-    const snap = await FIRESTORE_DOC.get();
-    if(snap.exists){
-      return snap.data();
-    }
+    const snap=await FIRESTORE_DOC.get();
+    if(snap.exists)return snap.data();
   }catch(e){
     console.error('Error leyendo Firestore',e);
     setStatus('⚠️ Error al leer datos compartidos','err');
@@ -263,7 +492,6 @@ async function writeToStorage(data){
     return false;
   }
 }
-
 function collectState(){
   return{
     ots:ots.map(ot=>({
@@ -271,6 +499,7 @@ function collectState(){
       num:ot.num,
       desc:ot.desc,
       cliente:ot.cliente||'',
+      color:ot.color||'#3498db',
       cerrada:ot.cerrada,
       rows:ot.rows.map(r=>{
         const tr=document.getElementById('row-'+r.id);
@@ -292,7 +521,6 @@ function collectState(){
     otId,rowId,activeOT
   };
 }
-
 function autosave(){
   pendingSave=true;
   if(saveTimer)clearTimeout(saveTimer);
@@ -309,28 +537,31 @@ async function flushSave(){
     setStatus('❌ Error al guardar — reintentando…','err',false);
     await new Promise(r=>setTimeout(r,2000));
     const ok2=await writeToStorage(collectState());
-    setStatus(ok2?'✅ Guardado (reintento)':'❌ No se pudo guardar','ok');
+    setStatus(ok2?'✅ Guardado reintento':'❌ No se pudo guardar','err');
   }
 }
-async function saveNow(){if(saveTimer)clearTimeout(saveTimer);pendingSave=true;await flushSave();}
+async function saveNow(){
+  if(saveTimer)clearTimeout(saveTimer);
+  pendingSave=true;
+  await flushSave();
+}
 
-// Color estado OT
+// ---------- ESTADO / COLOR POR OT ----------
 function getOTColorState(ot){
-  if(ot.cerrada) return 'rojo';
-  const rows = ot.rows;
-  const hayPausa = rows.some(r => r.startTs && !r.endTs && r.pauseStart);
-  if(hayPausa) return 'naranja';
-  const hayActiva = rows.some(r => r.startTs && !r.endTs && !r.pauseStart);
-  if(hayActiva) return 'verde';
+  if(ot.cerrada)return 'rojo';
+  const rows=ot.rows;
+  const hayPausa=rows.some(r=>r.startTs && !r.endTs && r.pauseStart);
+  if(hayPausa)return 'naranja';
+  const hayActiva=rows.some(r=>r.startTs && !r.endTs && !r.pauseStart);
+  if(hayActiva)return 'verde';
   return '';
 }
 
-// Filtro Abiertas / Cerradas
 function setOTFilter(tipo){
-  otFilter = tipo;
-  const btnA = document.getElementById('btn-ot-abiertas');
-  const btnC = document.getElementById('btn-ot-cerradas');
-  if(tipo === 'abiertas'){
+  otFilter=tipo;
+  const btnA=document.getElementById('btn-ot-abiertas');
+  const btnC=document.getElementById('btn-ot-cerradas');
+  if(tipo==='abiertas'){
     if(btnA){btnA.style.background='#1a1a2e';btnA.style.color='#fff';}
     if(btnC){btnC.style.background='#7f8c8d';btnC.style.color='#fff';}
   }else{
@@ -339,29 +570,24 @@ function setOTFilter(tipo){
   }
   applyOTFilter();
 }
-
 function applyOTFilter(){
   ots.forEach(ot=>{
-    const tab = document.getElementById('tab-ot-'+ot.id);
-    const panel = document.getElementById('panel-ot-'+ot.id);
-    if(!tab || !panel) return;
-    const esCerrada = !!ot.cerrada;
-    const visible = (otFilter === 'abiertas') ? !esCerrada : esCerrada;
-    tab.style.display = visible ? '' : 'none';
-    panel.style.display = (visible && ot.id === activeOT) ? 'block' : 'none';
+    const tab=document.getElementById('tab-ot-'+ot.id);
+    const panel=document.getElementById('panel-ot-'+ot.id);
+    if(!tab||!panel)return;
+    const esCerrada=!!ot.cerrada;
+    const matchState=otFilter==='abiertas'?!esCerrada:esCerrada;
+    const matchColor=colorFilter==='todos'||(ot.color||'#3498db')===colorFilter;
+    const visible=matchState&&matchColor;
+    tab.style.display=visible?'flex':'none';
+    panel.style.display=visible && ot.id===activeOT?'block':'none';
   });
-
-  const actual = ots.find(o=>o.id===activeOT);
-  if(actual && ((otFilter==='abiertas'&&actual.cerrada)||(otFilter==='cerradas'&&!actual.cerrada))){
-    const candidato = ots.find(o=> (otFilter==='abiertas') ? !o.cerrada : o.cerrada );
-    if(candidato) activateOT(candidato.id);
-  }
 }
 
-// Boot
+// ---------- BOOT ----------
 async function boot(){
   const saved=await loadFromStorage();
-  if(saved&&saved.ots&&saved.ots.length){
+  if(saved && saved.ots && saved.ots.length){
     otId=saved.otId||0;rowId=saved.rowId||0;
     for(const sot of saved.ots){
       const ot={
@@ -369,6 +595,7 @@ async function boot(){
         num:sot.num,
         desc:sot.desc||'',
         cliente:sot.cliente||'',
+        color:sot.color||'#3498db',
         rows:[],
         cerrada:!!sot.cerrada
       };
@@ -381,7 +608,9 @@ async function boot(){
       if(numEl)numEl.value=ot.num;
       if(descEl)descEl.value=ot.desc||'';
       if(cliEl)cliEl.value=ot.cliente||'';
-      for(const sr of sot.rows||[]){
+      const colorEl=document.getElementById('otcolor-'+ot.id);
+      if(colorEl)colorEl.value=ot.color||'#3498db';
+      for(const sr of (sot.rows||[])){
         const r={
           id:sr.id,otId:ot.id,
           startTs:sr.startTs,
@@ -398,7 +627,7 @@ async function boot(){
       updateOTTotal(ot.id);
       updateTabLabel(ot.id);
     }
-    const act=saved.activeOT&&ots.find(o=>o.id===saved.activeOT)?saved.activeOT:ots[0]?.id;
+    const act=saved.activeOT && ots.find(o=>o.id===saved.activeOT)?saved.activeOT:ots[0]?.id;
     if(act)activateOT(act);
     setStatus('✅ Datos compartidos cargados','ok');
   }else{
@@ -407,9 +636,11 @@ async function boot(){
   }
   document.getElementById('loading-overlay').style.display='none';
   applyEditLockState();
+  renderLegend();
   setOTFilter('abiertas');
 }
 
+// ---------- CREAR / ACTIVAR OT ----------
 function createOT(){
   const id=++otId;
   const ot={
@@ -417,6 +648,7 @@ function createOT(){
     num:'OT-'+String(id).padStart(3,'0'),
     desc:'',
     cliente:'',
+    color:'#3498db',
     rows:[],
     cerrada:false
   };
@@ -427,14 +659,12 @@ function createOT(){
   activateOT(id);
   autosave();
 }
-
 function activateOT(id){
   activeOT=id;
   document.querySelectorAll('.ot-tab').forEach(t=>t.classList.toggle('active',+t.dataset.id===id));
   document.querySelectorAll('.ot-panel').forEach(p=>p.style.display=+p.dataset.id===id?'block':'none');
   updateTabLabel(id);
 }
-
 function renderOTTab(ot){
   const bar=document.getElementById('ot-tabs-bar');
   const btn=bar.querySelector('.btn-new-ot');
@@ -443,7 +673,11 @@ function renderOTTab(ot){
   tab.dataset.id=ot.id;
   tab.id='tab-ot-'+ot.id;
   tab.onclick=()=>activateOT(ot.id);
-  tab.innerHTML=`<span class="tab-label">${ot.num}</span>`;
+  tab.innerHTML=
+    `<span class="tab-head">
+      <span class="ot-color-dot" style="background:${ot.color||'#3498db'}"></span>
+      <span class="tab-label">${ot.num}</span>
+    </span>`;
   const x=document.createElement('button');
   x.className='close-ot';
   x.title='Eliminar OT';
@@ -453,16 +687,17 @@ function renderOTTab(ot){
   bar.insertBefore(tab,btn);
   applyOTFilter();
 }
-
 function updateTabLabel(id){
   const ot=ots.find(o=>o.id===id);if(!ot)return;
   const tab=document.getElementById('tab-ot-'+id);if(!tab)return;
-  tab.querySelector('.tab-label').textContent=ot.num;
+  const lab=tab.querySelector('.tab-label');
+  if(lab)lab.textContent=ot.num;
+  const dot=tab.querySelector('.ot-color-dot');
+  if(dot)dot.style.background=ot.color||'#3498db';
   const isActive=(id===activeOT);
   const colorState=getOTColorState(ot);
   tab.className='ot-tab'+(isActive?' active':'')+(colorState?' estado-'+colorState:'');
 }
-
 function removeOT(id){
   const ot=ots.find(o=>o.id===id);
   showModal(`¿Eliminar la OT "${ot?.num||id}" de forma permanente? Esta acción no se puede deshacer.`,()=>{
@@ -476,8 +711,6 @@ function removeOT(id){
     autosave();
   });
 }
-function removeOTConfirm(id){removeOT(id);}
-
 function renderOTPanel(ot){
   const div=document.createElement('div');
   div.className='ot-content ot-panel';
@@ -486,49 +719,62 @@ function renderOTPanel(ot){
   div.style.display='none';
   div.innerHTML=`
     <div class="ot-meta">
-      <label>Nº OT:</label>
+      <label>Nº OT</label>
       <input type="text" id="otnum-${ot.id}" value="${ot.num}"
-        oninput="const o=ots.find(o=>o.id===${ot.id});o.num=this.value;updateTabLabel(${ot.id});autosave()">
-      <label>Descripción:</label>
-      <input type="text" id="otdesc-${ot.id}" value="${ot.desc || ''}" placeholder="Descripción del trabajo"
-        oninput="const o=ots.find(o=>o.id===${ot.id});o.desc=this.value;autosave()" style="width:220px">
-      <label>Cliente:</label>
-      <input type="text" id="otcli-${ot.id}" value="${ot.cliente || ''}" placeholder="Nombre del cliente"
-        oninput="const o=ots.find(o=>o.id===${ot.id});o.cliente=this.value;autosave()" style="width:180px">
-      <span id="badge-${ot.id}" class="badge badge-abierta">🔓 Abierta</span>
-      <button class="btn-a btn-danger" style="font-size:11px;padding:4px 10px" onclick="removeOTConfirm(${ot.id})">🗑 Eliminar OT</button>
+        oninput="const o=ots.find(x=>x.id===${ot.id});o.num=this.value;updateTabLabel(${ot.id});autosave()" style="width:80px">
+      <label>Descripción</label>
+      <input type="text" id="otdesc-${ot.id}" value="${ot.desc||''}" placeholder="Descripción del trabajo"
+        oninput="const o=ots.find(x=>x.id===${ot.id});o.desc=this.value;autosave()" style="width:220px">
+      <label>Cliente</label>
+      <input type="text" id="otcli-${ot.id}" value="${ot.cliente||''}" placeholder="Nombre del cliente"
+        oninput="const o=ots.find(x=>x.id===${ot.id});o.cliente=this.value;autosave()" style="width:180px">
+      <label>Color</label>
+      <select class="cell" style="width:120px" id="otcolor-${ot.id}"
+        onchange="const o=ots.find(x=>x.id===${ot.id});o.color=this.value;updateTabLabel(${ot.id});autosave()">
+        <option value="#3498db" ${ot.color==='#3498db'?'selected':''}>Azul (Juanjo)</option>
+        <option value="#9b59b6" ${ot.color==='#9b59b6'?'selected':''}>Morado (Alberto)</option>
+        <option value="#f1c40f" ${ot.color==='#f1c40f'?'selected':''}>Amarillo (Juanra)</option>
+        <option value="#8e5a2b" ${ot.color==='#8e5a2b'?'selected':''}>Marrón (Juan Carlos)</option>
+        <option value="#ff77b4" ${ot.color==='#ff77b4'?'selected':''}>Rosa (Otros)</option>
+      </select>
+      <span id="badge-${ot.id}" class="badge badge-abierta">Abierta</span>
+      <button class="btn-a btn-danger" style="font-size:11px;padding:4px 10px" onclick="removeOT(${ot.id})">Eliminar OT</button>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th style="width:24px">#</th>
-          <th style="width:80px">Fecha</th>
-          <th style="width:120px">Operario</th>
-          <th style="width:120px">Proceso</th>
-          <th style="width:100px">Hora inicio</th>
-          <th style="width:200px">Controles</th>
-          <th style="width:80px">Hora fin</th>
-          <th style="width:100px">Total neto</th>
-          <th>Observaciones</th>
-          <th style="width:26px"></th>
-        </tr></thead>
+        <thead>
+          <tr>
+            <th style="width:24px"></th>
+            <th style="width:80px">Fecha</th>
+            <th style="width:120px">Operario</th>
+            <th style="width:120px">Proceso</th>
+            <th style="width:100px">Hora inicio</th>
+            <th style="width:200px">Controles</th>
+            <th style="width:80px">Hora fin</th>
+            <th style="width:100px">Total neto</th>
+            <th>Observaciones</th>
+            <th style="width:26px"></th>
+          </tr>
+        </thead>
         <tbody id="tbody-${ot.id}"></tbody>
       </table>
     </div>
     <div class="ot-footer">
       <div class="ot-footer-left">
-        <button class="btn-a btn-add-row" id="btnadd-${ot.id}" onclick="addRow(${ot.id})">＋ Añadir fila</button>
-        <button class="btn-a btn-finalizar" id="btnfin-${ot.id}" onclick="finalizarOT(${ot.id})">✔ Finalizar OT</button>
+        <button class="btn-a btn-add-row" id="btnadd-${ot.id}" onclick="addRow(${ot.id})">Añadir fila</button>
+        <button class="btn-a btn-finalizar" id="btnfin-${ot.id}" onclick="finalizarOT(${ot.id})">Finalizar OT</button>
       </div>
       <div class="ot-footer-right">
-        <div class="total-bar" id="totalbar-${ot.id}">Tiempo total: 0h 00min</div>
-        <button class="btn-a btn-print-ot" onclick="printOT(${ot.id})">🖨 Imprimir / PDF</button>
-        <button class="btn-a btn-excel" onclick="exportOTExcel(${ot.id})">📥 Exportar Excel</button>
+        <div class="total-bar" id="totalbar-${ot.id}">Tiempo total 0h 00min</div>
+        <button class="btn-a btn-print-ot" onclick="printOT(${ot.id})">Imprimir PDF</button>
+        <button class="btn-a btn-excel" onclick="exportOTExcel(${ot.id})">Exportar Excel</button>
       </div>
-    </div>`;
+    </div>
+  `;
   document.getElementById('ot-panels').appendChild(div);
 }
 
+// ---------- FILAS ----------
 function addRow(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot||ot.cerrada)return;
   const id=++rowId;
@@ -539,175 +785,185 @@ function addRow(otId){
   updateTabLabel(otId);
   autosave();
 }
-
 function appendRowEl(otId,r,fields){
   const tbody=document.getElementById('tbody-'+otId);
   const tr=document.createElement('tr');
   tr.id='row-'+r.id;
+  const f=fields||{};
   tr.innerHTML=`
     <td style="color:#999;font-size:10px" class="rn"></td>
-    <td><input class="cell" type="text" value="${fields.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
-    <td><select class="cell" onchange="autosave()">${opOptions(fields.operario||'')}</select></td>
-    <td><select class="cell" onchange="autosave()">${prOptions(fields.proceso||'')}</select></td>
+    <td><input class="cell" type="text" value="${f.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
+    <td><select class="cell" onchange="autosave()">${opOptions(f.operario||'')}</select></td>
+    <td><select class="cell" onchange="autosave()">${prOptions(f.proceso||'')}</select></td>
+    <td><input class="cell hora-inicio" type="text" placeholder="hh:mm:ss" value="" oninput="manualTimeChange(${r.id},'start',this.value)"></td>
     <td>
-      <input class="cell hora-inicio" type="text"
-             placeholder="hh:mm:ss"
-             value=""
-             oninput="manualTimeChange(${r.id}, 'start', this.value)">
+      <div class="time-cell">
+        <button class="btn-t btn-start" id="bs-${r.id}" onclick="pressStart(${r.id})">INICIO</button>
+        <button class="btn-t btn-pause" id="bp-${r.id}" onclick="pressPause(${r.id})" disabled>PAUSA</button>
+        <button class="btn-t btn-end" id="be-${r.id}" onclick="pressEnd(${r.id})" disabled>FIN</button>
+      </div>
+      <span class="pause-info"></span>
     </td>
-    <td><div class="time-cell">
-      <button class="btn-t btn-start" id="bs-${r.id}" onclick="pressStart(${r.id})">INICIO</button>
-      <button class="btn-t btn-pause" id="bp-${r.id}" onclick="pressPause(${r.id})" disabled>⏸ PAUSA</button>
-      <button class="btn-t btn-end"   id="be-${r.id}" onclick="pressEnd(${r.id})"   disabled>FIN</button>
-    </div></td>
-    <td>
-      <input class="cell hora-fin" type="text"
-             placeholder="hh:mm:ss"
-             value=""
-             oninput="manualTimeChange(${r.id}, 'end', this.value)">
-    </td>
-    <td class="total-cell"><span class="total-disp">—</span><span class="pause-info"></span></td>
-    <td><input class="cell obs" type="text" value="${fields.obs||''}" placeholder="Notas…" oninput="autosave()"></td>
-    <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button></td>`;
+    <td><input class="cell hora-fin" type="text" placeholder="hh:mm:ss" value="" oninput="manualTimeChange(${r.id},'end',this.value)"></td>
+    <td class="total-cell"><span class="total-disp"></span></td>
+    <td><input class="cell obs" type="text" value="${f.obs||''}" placeholder="Notas" oninput="autosave()"></td>
+    <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">X</button></td>
+  `;
   tbody.appendChild(tr);
   renderRow(r);
 }
 
 function pressStart(id){
-  const r=allRows().find(x=>x.id===id);if(!r||r.locked)return;
-  r.startTs=Date.now();r.endTs=null;r.pauses=[];r.pauseStart=null;
+  const r=allRows().find(x=>x.id===id);
+  if(!r||r.locked)return;
+  r.startTs=Date.now();
+  r.endTs=null;
+  r.pauses=[];
+  r.pauseStart=null;
   renderRow(r);
   updateTabLabel(r.otId);
   autosave();
 }
 function pressPause(id){
-  const r=allRows().find(x=>x.id===id);if(!r||r.locked||!r.startTs||r.endTs)return;
-  if(!r.pauseStart)r.pauseStart=Date.now();
-  else{r.pauses.push({from:r.pauseStart,to:Date.now()});r.pauseStart=null;}
+  const r=allRows().find(x=>x.id===id);
+  if(!r||r.locked||!r.startTs||r.endTs)return;
+  if(!r.pauseStart){
+    r.pauseStart=Date.now();
+  }else{
+    r.pauses.push({from:r.pauseStart,to:Date.now()});
+    r.pauseStart=null;
+  }
   renderRow(r);
   updateTabLabel(r.otId);
   autosave();
 }
 function pressEnd(id){
-  const r=allRows().find(x=>x.id===id);if(!r||!r.startTs||r.locked)return;
-  if(r.pauseStart){r.pauses.push({from:r.pauseStart,to:Date.now()});r.pauseStart=null;}
-  r.endTs=Date.now();r.locked=true;
+  const r=allRows().find(x=>x.id===id);
+  if(!r||!r.startTs||r.locked)return;
+  if(r.pauseStart){
+    r.pauses.push({from:r.pauseStart,to:Date.now()});
+    r.pauseStart=null;
+  }
+  r.endTs=Date.now();
+  r.locked=true;
   renderRow(r);
   updateTabLabel(r.otId);
   autosave();
 }
-
-function parseHoraTexto(fechaStr, horaStr){
-  if(!fechaStr || !horaStr) return null;
-  const fParts = fechaStr.split('/');
-  if(fParts.length < 3) return null;
-  const d = parseInt(fParts[0],10);
-  const m = parseInt(fParts[1],10)-1;
-  const y = parseInt(fParts[2],10);
-  const hParts = horaStr.split(':');
-  const h = parseInt(hParts[0],10);
-  const mi = parseInt(hParts[1]||'0',10);
-  const s = parseInt(hParts[2]||'0',10);
-  if(isNaN(d)||isNaN(m)||isNaN(y)||isNaN(h)||isNaN(mi)||isNaN(s)) return null;
-  return new Date(y,m,d,h,mi,s).getTime();
+function manualTimeChange(rowId,tipo,valor){
+  if(!editUnlocked){alert('Solo tiempo con contraseña.');return;}
+  const r=allRows().find(x=>x.id===rowId);if(!r)return;
+  const tr=document.getElementById('row-'+r.id);if(!tr)return;
+  const cells=tr.querySelectorAll('.cell');
+  const fechaStr=cells[0]?.value;
+  const ts=parseHoraTexto(fechaStr,valor.trim());
+  if(!ts){
+    alert('Formato incorrecto. Usa dd/mm/aa o dd/mm/aaaa y hora hh:mm o hh:mm:ss');
+    return;
+  }
+  if(tipo==='start'){
+    r.startTs=ts;
+    if(!r.endTs)r.endTs=ts;
+  }else{
+    r.endTs=ts;
+    if(!r.startTs)r.startTs=ts;
+  }
+  r.pauses=[];
+  r.pauseStart=null;
+  r.locked=!!(r.startTs && r.endTs);
+  renderRow(r);
+  updateTabLabel(r.otId);
+  autosave();
 }
+function parseHoraTexto(fechaStr,horaStr){
+  if(!fechaStr || !horaStr) return null;
 
-function manualTimeChange(rowId, tipo, valor){
-  if(!editUnlocked) return; // solo tú con contraseña
-  const r = allRows().find(x=>x.id===rowId);
-  if(!r) return;
-  const tr = document.getElementById('row-'+r.id);
-  if(!tr) return;
-  const cells = tr.querySelectorAll('.cell');
-  const fechaStr = cells[0]?.value || '';
-  const ts = parseHoraTexto(fechaStr, valor.trim());
-  if(!ts) return; // formato incorrecto, no tocamos nada
-
-  if(tipo === 'start'){
-    r.startTs = ts;
-    if(!r.endTs) r.endTs = ts;
-  }else if(tipo === 'end'){
-    r.endTs = ts;
-    if(!r.startTs) r.startTs = ts;
+  // Fecha: dd/mm/aa o dd/mm/aaaa
+  const fParts = fechaStr.split('/');
+  if(fParts.length!==3) return null;
+  let d = parseInt(fParts[0],10);
+  let m = parseInt(fParts[1],10)-1;
+  let yRaw = fParts[2].trim();
+  let y = parseInt(yRaw,10);
+  if(yRaw.length===2){ // 24 -> 2024, por ejemplo
+    y = 2000 + y;
   }
 
-  // Si tocas horas a mano, borramos pausas para simplificar
-  r.pauses = [];
-  r.pauseStart = null;
-  r.locked = !!(r.startTs && r.endTs);
+  // Hora: hh:mm o hh:mm:ss
+  const hParts = horaStr.split(':');
+  if(hParts.length<2 || hParts.length>3) return null;
+  const h  = parseInt(hParts[0],10);
+  const mi = parseInt(hParts[1],10);
+  const s  = hParts[2] ? parseInt(hParts[2],10) : 0;
 
-  renderRow(r);
-  updateTabLabel(r.otId);
-  autosave();
+  if([d,m,y,h,mi,s].some(n=>isNaN(n))) return null;
+  return new Date(y,m,d,h,mi,s).getTime();
 }
-
 function calcNetSec(r){
   if(!r.startTs||!r.endTs)return 0;
   const gross=Math.floor((r.endTs-r.startTs)/1000);
   const paused=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
   return Math.max(0,gross-paused);
 }
-
 function renderRow(r){
-  const tr=document.getElementById('row-'+r.id);if(!tr)return;
+  const tr=document.getElementById('row-'+r.id);
+  if(!tr)return;
   const td=tr.querySelector('.total-disp');
   const pi=tr.querySelector('.pause-info');
   const bs=document.getElementById('bs-'+r.id);
   const bp=document.getElementById('bp-'+r.id);
   const be=document.getElementById('be-'+r.id);
   const bd=document.getElementById('bd-'+r.id);
-  const inpStart = tr.querySelector('.hora-inicio');
-  const inpEnd   = tr.querySelector('.hora-fin');
-
+  const inpStart=tr.querySelector('.hora-inicio');
+  const inpEnd=tr.querySelector('.hora-fin');
   if(inpStart){
     if(r.startTs){
-      const d = new Date(r.startTs);
-      inpStart.value = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    }else{
-      inpStart.value = '';
-    }
+      const d=new Date(r.startTs);
+      inpStart.value=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    }else inpStart.value='';
   }
   if(inpEnd){
     if(r.endTs){
-      const d = new Date(r.endTs);
-      inpEnd.value = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    }else{
-      inpEnd.value = '';
-    }
+      const d=new Date(r.endTs);
+      inpEnd.value=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    }else inpEnd.value='';
   }
-
-  if(bs)bs.disabled=!!(r.startTs||r.locked);
+  if(bs)bs.disabled=!!r.startTs || r.locked;
   if(bp){
     bp.disabled=!r.startTs||!!r.endTs||r.locked;
-    if(r.pauseStart){bp.textContent='▶ REANUDAR';bp.className='btn-t btn-pause resuming';}
-    else{bp.textContent='⏸ PAUSA';bp.className='btn-t btn-pause';}
+    if(r.pauseStart){
+      bp.textContent='REANUDAR';
+      bp.className='btn-t btn-pause resuming';
+    }else{
+      bp.textContent='PAUSA';
+      bp.className='btn-t btn-pause';
+    }
   }
   if(be){
     be.disabled=!r.startTs||r.locked;
-    if(r.locked){be.textContent='🔒';be.className='btn-t btn-end locked';}
-    else{be.textContent='FIN';be.className='btn-t btn-end';}
-  }
-
-  if(bd) bd.disabled = r.locked && !editUnlocked;
-
-  const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
-  if(pi)pi.textContent=pausedSec?'⏸ pausado: '+fmtSecShort(pausedSec):'';
-  const s=calcNetSec(r);
-  if(td)td.textContent=s?fmtSec(s):(r.pauseStart?'en pausa…':'—');
-
-  const cells = tr.querySelectorAll('.cell');
-  cells.forEach((c,i)=>{
-    if(i===0){ // Fecha
-      c.disabled = !editUnlocked;
+    if(r.locked){
+      be.textContent='FIN';
+      be.className='btn-t btn-end locked';
     }else{
-      c.disabled = false;
+      be.textContent='FIN';
+      be.className='btn-t btn-end';
     }
+  }
+  if(bd)bd.disabled=r.locked || !editUnlocked;
+  const pausedSec=(r.pauses||[]).reduce((a,p)=>a+Math.floor((p.to-p.from)/1000),0);
+  if(pi)pi.textContent=pausedSec?`pausado ${fmtSecShort(pausedSec)}`:'';
+  const s=calcNetSec(r);
+  if(td)td.textContent=s?fmtSec(s): (r.pauseStart?'en pausa':'');
+  const cells=tr.querySelectorAll('.cell');
+  cells.forEach((c,i)=>{
+    if(i===0) c.disabled=!editUnlocked;
+    else c.disabled=false;
   });
-
-  if(r.locked)tr.classList.add('row-locked');else tr.classList.remove('row-locked');
+  if(r.locked)tr.classList.add('row-locked');
+  else tr.classList.remove('row-locked');
   updateOTTotal(r.otId);
 }
-
+function allRows(){return ots.flatMap(o=>o.rows);}
 function delRow(id,otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
   ot.rows=ot.rows.filter(r=>r.id!==id);
@@ -717,26 +973,33 @@ function delRow(id,otId){
   updateTabLabel(otId);
   autosave();
 }
-function allRows(){return ots.flatMap(o=>o.rows)}
 function refreshRowNums(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
-  ot.rows.forEach((r,i)=>{const td=document.querySelector('#row-'+r.id+' .rn');if(td)td.textContent=i+1;});
+  ot.rows.forEach((r,i)=>{
+    const td=document.querySelector('#row-'+r.id+' .rn');
+    if(td)td.textContent=i+1;
+  });
 }
 function updateOTTotal(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
-  const t=ot.rows.reduce((a,r)=>a+calcNetSec(r),0);
+  const tot=ot.rows.reduce((a,r)=>a+calcNetSec(r),0);
   const el=document.getElementById('totalbar-'+otId);
-  if(el)el.textContent='Tiempo total: '+fmtSecShort(t);
+  if(el)el.textContent='Tiempo total '+fmtSecShort(tot);
 }
 
-// Finalizar / Reabrir
+// ---------- FINALIZAR / REABRIR ----------
 function applyFinalizarUI(id){
   const ot=ots.find(o=>o.id===id);if(!ot)return;
   const badge=document.getElementById('badge-'+id);
-  if(badge){badge.className='badge badge-cerrada';badge.textContent='🔒 Cerrada';}
-  const btnAdd=document.getElementById('btnadd-'+id);if(btnAdd)btnAdd.disabled=true;
+  if(badge){badge.className='badge badge-cerrada';badge.textContent='Cerrada';}
+  const btnAdd=document.getElementById('btnadd-'+id);
+  if(btnAdd)btnAdd.disabled=true;
   const btnFin=document.getElementById('btnfin-'+id);
-  if(btnFin){btnFin.textContent='↺ Reabrir OT';btnFin.className='btn-a btn-reabrir';btnFin.onclick=()=>reabrirOT(id);}
+  if(btnFin){
+    btnFin.textContent='Reabrir OT';
+    btnFin.className='btn-a btn-reabrir';
+    btnFin.onclick=()=>reabrirOT(id);
+  }
   const panel=document.getElementById('panel-ot-'+id);
   if(panel){
     panel.querySelectorAll('.btn-t:not(.locked)').forEach(b=>{if(!b.classList.contains('btn-end'))b.disabled=true;});
@@ -747,91 +1010,97 @@ function applyFinalizarUI(id){
 }
 function restoreCerrada(id){
   const ot=ots.find(o=>o.id===id);if(!ot)return;
-  ot.cerrada=true;applyFinalizarUI(id);
+  ot.cerrada=true;
+  applyFinalizarUI(id);
 }
 function finalizarOT(id){
   const ot=ots.find(o=>o.id===id);if(!ot)return;
-  showModal(`¿Finalizar la OT "${ot.num}"? Ya no se podrán añadir más filas.`,()=>{
-    ot.cerrada=true;applyFinalizarUI(id);autosave();
+  showModal(`¿Finalizar la OT ${ot.num}? Ya no se podrán añadir más filas.`,()=>{
+    ot.cerrada=true;
+    applyFinalizarUI(id);
+    autosave();
   });
 }
 function reabrirOT(id){
   const ot=ots.find(o=>o.id===id);if(!ot)return;
   ot.cerrada=false;
   const badge=document.getElementById('badge-'+id);
-  if(badge){badge.className='badge badge-abierta';badge.textContent='🔓 Abierta';}
-  const btnAdd=document.getElementById('btnadd-'+id);if(btnAdd)btnAdd.disabled=false;
+  if(badge){badge.className='badge badge-abierta';badge.textContent='Abierta';}
+  const btnAdd=document.getElementById('btnadd-'+id);
+  if(btnAdd)btnAdd.disabled=false;
   const btnFin=document.getElementById('btnfin-'+id);
-  if(btnFin){btnFin.textContent='✔ Finalizar OT';btnFin.className='btn-a btn-finalizar';btnFin.onclick=()=>finalizarOT(id);}
-  ot.rows.forEach(r=>{if(!r.locked){
-    const tr=document.getElementById('row-'+r.id);
-    if(tr)tr.querySelectorAll('.cell').forEach(i=>i.disabled=false);
+  if(btnFin){
+    btnFin.textContent='Finalizar OT';
+    btnFin.className='btn-a btn-finalizar';
+    btnFin.onclick=()=>finalizarOT(id);
+  }
+  ot.rows.forEach(r=>{
+    if(!r.locked){
+      const tr=document.getElementById('row-'+r.id);
+      if(tr)tr.querySelectorAll('.cell').forEach(i=>i.disabled=false);
+    }
     renderRow(r);
-  }});
-  updateTabLabel(id);autosave();
+  });
+  updateTabLabel(id);
+  autosave();
   applyOTFilter();
 }
-
 function getRowFields(r){
   const tr=document.getElementById('row-'+r.id);
   const c=tr?tr.querySelectorAll('.cell'):[];
-  return{fecha:c[0]?.value||'',operario:c[1]?.value||'',proceso:c[2]?.value||'',obs:c[3]?.value||''};
+  return{
+    fecha:c[0]?.value,
+    operario:c[1]?.value,
+    proceso:c[2]?.value,
+    obs:c[3]?.value
+  };
 }
 
-// Bloqueo/desbloqueo de edición
+// ---------- BLOQUEO EDICIÓN ----------
 function applyEditLockState(){
-  const btn = document.getElementById('btn-edit-lock');
+  const btn=document.getElementById('btn-edit-lock');
   if(btn){
     if(editUnlocked){
-      btn.textContent = '🔓 Edición desbloqueada';
-      btn.style.background = '#27ae60';
+      btn.textContent='Edición desbloqueada';
+      btn.style.background='#27ae60';
     }else{
-      btn.textContent = '🔒 Edición bloqueada';
-      btn.style.background = '#8e44ad';
+      btn.textContent='Edición bloqueada';
+      btn.style.background='#8e44ad';
     }
   }
-
   ots.forEach(ot=>{
     const numEl=document.getElementById('otnum-'+ot.id);
     const descEl=document.getElementById('otdesc-'+ot.id);
     const cliEl=document.getElementById('otcli-'+ot.id);
-    [numEl,descEl,cliEl].forEach(el=>{
-      if(!el)return;
-      el.disabled = false;
-    });
-
+    [numEl,descEl,cliEl].forEach(el=>{if(el)el.disabled=false;});
     ot.rows.forEach(r=>{
       const tr=document.getElementById('row-'+r.id);
       if(!tr)return;
-      const cells = tr.querySelectorAll('.cell');
+      const cells=tr.querySelectorAll('.cell');
       cells.forEach((c,i)=>{
-        if(i===0){ // Fecha
-          c.disabled = !editUnlocked;
-        }else{
-          c.disabled = false;
-        }
+        if(i===0)c.disabled=!editUnlocked;
+        else c.disabled=false;
       });
-      const bd = document.getElementById('bd-'+r.id);
-      if(bd) bd.disabled = r.locked && !editUnlocked;
+const bd=document.getElementById('bd-'+r.id);
+if(bd){
+  // Con edición desbloqueada, se puede borrar siempre
+  bd.disabled = !editUnlocked;
+}
     });
   });
 }
-
 function toggleEditLock(){
   if(!editUnlocked){
-    const pwd = prompt('Introduce la contraseña para desbloquear edición:');
-    if(pwd !== EDIT_PASSWORD){
-      alert('Contraseña incorrecta');
-      return;
-    }
-    editUnlocked = true;
+    const pwd=prompt('Introduce la contraseña para desbloquear edición');
+    if(pwd!==EDIT_PASSWORD){alert('Contraseña incorrecta');return;}
+    editUnlocked=true;
   }else{
-    editUnlocked = false;
+    editUnlocked=false;
   }
   applyEditLockState();
 }
 
-// Resumen (igual que antes)
+// ---------- RESUMEN ----------
 function collectResumenData(){
   let grand=0;
   const otList=[],byWorker={},byProcess={};
@@ -852,7 +1121,6 @@ function collectResumenData(){
   });
   return{grand,otList,byWorker,byProcess};
 }
-
 function buildResumen(){
   const grid=document.getElementById('resumen-grid');grid.innerHTML='';
   if(!ots.length){
@@ -883,16 +1151,52 @@ function buildResumen(){
   grid.innerHTML=html;
 }
 
+// ---------- VISTAS / EXPORT ----------
 function showView(name){
   document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.toggle('active',['registro','resumen'][i]===name));
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
+  if(name==='resumen')buildResumen();
 }
 
 // TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
 function printOT(id){
-  alert('Implementa aquí tu lógica de impresión como en el código anterior.');
+  const ot = ots.find(o=>o.id===id);
+  if(!ot){ alert('OT no encontrada'); return; }
+
+  const panel = document.getElementById('panel-ot-'+id);
+  if(!panel){ alert('No se puede imprimir esta OT'); return; }
+
+  // Clonamos el contenido de la OT
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if(!win){ alert('El navegador ha bloqueado la ventana de impresión'); return; }
+
+  const titulo = ot.num + (ot.desc ? ' — ' + ot.desc : '') + (ot.cliente ? ' · ' + ot.cliente : '');
+
+  win.document.write(`
+    <html>
+      <head>
+        <title>${titulo}</title>
+        <style>
+          body{font-family:Arial,sans-serif;font-size:12px;padding:20px;}
+          h2{font-size:16px;margin-bottom:8px;}
+          table{width:100%;border-collapse:collapse;font-size:11px;}
+          th,td{border:1px solid #ccc;padding:4px 6px;text-align:center;}
+          th{text-align:center;background:#f0f2f5;}
+          .tot{font-weight:bold;background:#f9f9f9;}
+        </style>
+      </head>
+      <body>
+        <h2>${titulo}</h2>
+        ${panel.querySelector('.table-wrap').innerHTML}
+      </body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
 }
+
 function exportOTExcel(id){
   alert('Implementa aquí tu lógica de exportación a Excel por OT.');
 }
