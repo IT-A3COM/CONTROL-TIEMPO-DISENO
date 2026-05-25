@@ -361,7 +361,6 @@ function setOTFilter(tipo){
     if(btnC){btnC.style.background='#1a1a2e';btnC.style.color='#fff';}
   }
  applyOTFilter();
-aplicarCarpetaOperario();
 }
 
 function applyOTFilter(){
@@ -475,7 +474,6 @@ async function boot(){
  document.getElementById('loading-overlay').style.display='none';
 applyEditLockState();
 setOTFilter('abiertas');
-aplicarCarpetaOperario();
 }
 function createOT(){
   const id=++otId;
@@ -786,7 +784,6 @@ function delRow(id,otId){
   refreshRowNums(otId);
   updateOTTotal(otId);
   updateTabLabel(otId);
-  aplicarCarpetaOperario();
   autosave();
 }
 
@@ -808,7 +805,6 @@ function moveRowUp(id,otId){
   refreshRowNums(otId);
   updateOTTotal(otId);
   updateTabLabel(otId);
-  aplicarCarpetaOperario();
   autosave();
 }
 
@@ -830,7 +826,6 @@ function moveRowDown(id,otId){
   refreshRowNums(otId);
   updateOTTotal(otId);
   updateTabLabel(otId);
-  aplicarCarpetaOperario();
   autosave();
 }
 
