@@ -157,12 +157,21 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 </div>
 
 <div class="view-panel active" id="view-registro">
+  <div class="btn-tabs" id="operario-tabs" style="margin-bottom:8px;">
+  <button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Juan Carlos')">👷 Juan Carlos</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Juan Ramón')">👷 Juan Ramón</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Otro...')">👷 Otro...</button>
+</div>
   <!-- Filtro Abiertas / OT finalizadas -->
   <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
     <strong style="font-size:12px;color:#333">OT:</strong>
     <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff">Abiertas</button>
     <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff">OT finalizadas</button>
   </div>
+
+  
 
   <div class="ot-tabs-bar" id="ot-tabs-bar">
     <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
@@ -203,6 +212,7 @@ let saveTimer=null, pendingSave=false, isSaving=false;
 let editUnlocked = false;
 const EDIT_PASSWORD = 'A3com2026';
 let otFilter = 'abiertas'; // 'abiertas' o 'cerradas'
+let carpetaOperario = 'Alberto Vivoras';
 
 const pad=n=>String(n).padStart(2,'0');
 function fmtTime(ts){if(!ts)return'--:--:--';const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
@@ -886,6 +896,14 @@ function showView(name){
   document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.toggle('active',['registro','resumen'][i]===name));
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
+  function setCarpetaOperario(nombre){
+  carpetaOperario = nombre;
+
+  const tabs = document.querySelectorAll('#operario-tabs .view-tab');
+  tabs.forEach(t => {
+    t.classList.toggle('active', t.textContent.includes(nombre));
+  });
+}
 }
 
 // TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
