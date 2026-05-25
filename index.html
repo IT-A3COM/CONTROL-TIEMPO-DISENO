@@ -40,7 +40,7 @@ h1{font-size:15px;font-weight:700;text-align:center;margin-bottom:2px;color:#1a1
 #save-status.info{color:#2980b9;font-weight:700}
 .top-btns{display:flex;justify-content:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 .ot-tabs-bar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;border-bottom:2px solid #1a1a2e;margin-bottom:0}
-.ot-tab{padding:6px 14px;border:1px solid #bbb;border-bottom:none;border-radius:5px 5px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#dde0e8;color:#444;display:flex;align-items:center;gap:6px}
+.ot-tab{padding:6px 14px;border:1px solid #bbb;border-bottom:none;border-radius:5px 5px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:#dde0e8;color:#444;display:flex;align-items:center;gap:6px;position:relative;padding-left:22px}
 .ot-tab.active{background:#1a1a2e;color:#fff;border-color:#1a1a2e}
 .ot-tab.estado-verde{background:#27ae60;color:#fff;border-color:#1e8449}
 .ot-tab.estado-verde.active{background:#1e8449;border-color:#1e8449}
@@ -87,20 +87,6 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 .total-cell{font-weight:700;color:#1a1a2e;font-size:12px}
 .btn-del{background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;font-weight:700}
 .btn-del:disabled{opacity:.3;cursor:default}
-.btn-move{
-  background:#7f8c8d;
-  color:#fff;
-  border:none;
-  border-radius:4px;
-  padding:2px 5px;
-  cursor:pointer;
-  font-size:10px;
-  margin-right:2px;
-}
-.btn-move:disabled{
-  opacity:.3;
-  cursor:default;
-}
 .ot-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px}
 .ot-footer-left{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ot-footer-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -171,21 +157,12 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 </div>
 
 <div class="view-panel active" id="view-registro">
-  <div class="btn-tabs" id="operario-tabs" style="margin-bottom:8px;">
-  <button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Juan Carlos')">👷 Juan Carlos</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Juan Ramón')">👷 Juan Ramón</button>
-  <button class="view-tab" onclick="setCarpetaOperario('Otro...')">👷 Otro...</button>
-</div>
   <!-- Filtro Abiertas / OT finalizadas -->
   <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
     <strong style="font-size:12px;color:#333">OT:</strong>
     <button class="btn-a" id="btn-ot-abiertas" onclick="setOTFilter('abiertas')" style="background:#1a1a2e;color:#fff">Abiertas</button>
     <button class="btn-a" id="btn-ot-cerradas" onclick="setOTFilter('cerradas')" style="background:#7f8c8d;color:#fff">OT finalizadas</button>
   </div>
-
-  
 
   <div class="ot-tabs-bar" id="ot-tabs-bar">
     <button class="btn-new-ot" onclick="createOT()">＋ Nueva OT</button>
@@ -360,7 +337,7 @@ function setOTFilter(tipo){
     if(btnA){btnA.style.background='#7f8c8d';btnA.style.color='#fff';}
     if(btnC){btnC.style.background='#1a1a2e';btnC.style.color='#fff';}
   }
- applyOTFilter();
+  applyOTFilter();
 }
 
 function applyOTFilter(){
@@ -379,29 +356,6 @@ function applyOTFilter(){
     const candidato = ots.find(o=> (otFilter==='abiertas') ? !o.cerrada : o.cerrada );
     if(candidato) activateOT(candidato.id);
   }
-}
-
-function aplicarCarpetaOperario(){
-}
-
-  const actual = ots.find(o=>o.id===activeOT);
-  const actualVisible = actual &&
-    ((otFilter === 'abiertas' && !actual.cerrada) || (otFilter === 'cerradas' && actual.cerrada)) &&
-    getOperarioDueno(actual) === carpetaOperario;
-
-  if(!actualVisible){
-    activeOT = primeraVisible;
-  }
-
-  document.querySelectorAll('.ot-panel').forEach(p=>p.style.display='none');
-  if(activeOT !== null){
-    const panelActivo = document.getElementById('panel-ot-'+activeOT);
-    if(panelActivo) panelActivo.style.display = 'block';
-  }
-
-  document.querySelectorAll('.ot-tab').forEach(t=>{
-    t.classList.toggle('active', +t.dataset.id === activeOT);
-  });
 }
 
 // Boot
@@ -451,10 +405,11 @@ async function boot(){
     createOT();
     setStatus('🆕 Sesión nueva — datos se guardarán en la nube','info');
   }
- document.getElementById('loading-overlay').style.display='none';
-applyEditLockState();
-setOTFilter('abiertas');
+  document.getElementById('loading-overlay').style.display='none';
+  applyEditLockState();
+  setOTFilter('abiertas');
 }
+
 function createOT(){
   const id=++otId;
   const ot={
@@ -592,7 +547,7 @@ function appendRowEl(otId,r,fields){
   tr.innerHTML=`
     <td style="color:#999;font-size:10px" class="rn"></td>
     <td><input class="cell" type="text" value="${fields.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
-    <td><select class="cell" onchange="autosave();aplicarCarpetaOperario()">${opOptions(fields.operario||'')}</select></td>
+    <td><select class="cell" onchange="autosave()">${opOptions(fields.operario||'')}</select></td>
     <td><select class="cell" onchange="autosave()">${prOptions(fields.proceso||'')}</select></td>
     <td>
       <input class="cell hora-inicio" type="text"
@@ -603,7 +558,7 @@ function appendRowEl(otId,r,fields){
     <td><div class="time-cell">
       <button class="btn-t btn-start" id="bs-${r.id}" onclick="pressStart(${r.id})">INICIO</button>
       <button class="btn-t btn-pause" id="bp-${r.id}" onclick="pressPause(${r.id})" disabled>⏸ PAUSA</button>
-      <button class="btn-t btn-end" id="be-${r.id}" onclick="pressEnd(${r.id})" disabled>FIN</button>
+      <button class="btn-t btn-end"   id="be-${r.id}" onclick="pressEnd(${r.id})"   disabled>FIN</button>
     </div></td>
     <td>
       <input class="cell hora-fin" type="text"
@@ -613,11 +568,7 @@ function appendRowEl(otId,r,fields){
     </td>
     <td class="total-cell"><span class="total-disp">—</span><span class="pause-info"></span></td>
     <td><input class="cell obs" type="text" value="${fields.obs||''}" placeholder="Notas…" oninput="autosave()"></td>
-    <td>
-      <button class="btn-move" onclick="moveRowUp(${r.id},${otId})">▲</button>
-      <button class="btn-move" onclick="moveRowDown(${r.id},${otId})">▼</button>
-      <button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button>
-    </td>`;
+    <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">✕</button></td>`;
   tbody.appendChild(tr);
   renderRow(r);
 }
@@ -766,49 +717,6 @@ function delRow(id,otId){
   updateTabLabel(otId);
   autosave();
 }
-
-function moveRowUp(id,otId){
-  const ot = ots.find(o=>o.id===otId);
-  if(!ot) return;
-  const i = ot.rows.findIndex(r=>r.id===id);
-  if(i<=0) return;
-
-  [ot.rows[i-1], ot.rows[i]] = [ot.rows[i], ot.rows[i-1]];
-
-  const tbody = document.getElementById('tbody-'+otId);
-  const tr = document.getElementById('row-'+id);
-  const prev = document.getElementById('row-'+ot.rows[i].id);
-  if(tbody && tr && prev){
-    tbody.insertBefore(tr, prev);
-  }
-
-  refreshRowNums(otId);
-  updateOTTotal(otId);
-  updateTabLabel(otId);
-  autosave();
-}
-
-function moveRowDown(id,otId){
-  const ot = ots.find(o=>o.id===otId);
-  if(!ot) return;
-  const i = ot.rows.findIndex(r=>r.id===id);
-  if(i<0 || i>=ot.rows.length-1) return;
-
-  [ot.rows[i], ot.rows[i+1]] = [ot.rows[i+1], ot.rows[i]];
-
-  const tbody = document.getElementById('tbody-'+otId);
-  const tr = document.getElementById('row-'+id);
-  const next = document.getElementById('row-'+ot.rows[i].id);
-  if(tbody && tr && next){
-    tbody.insertBefore(next, tr);
-  }
-
-  refreshRowNums(otId);
-  updateOTTotal(otId);
-  updateTabLabel(otId);
-  autosave();
-}
-
 function allRows(){return ots.flatMap(o=>o.rows)}
 function refreshRowNums(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
@@ -868,12 +776,6 @@ function getRowFields(r){
   const tr=document.getElementById('row-'+r.id);
   const c=tr?tr.querySelectorAll('.cell'):[];
   return{fecha:c[0]?.value||'',operario:c[1]?.value||'',proceso:c[2]?.value||'',obs:c[3]?.value||''};
-}
-
-function getOperarioDueno(ot){
-  if(!ot || !ot.rows || !ot.rows.length) return '';
-  const primera = ot.rows[0];
-  return primera.operario || '';
 }
 
 // Bloqueo/desbloqueo de edición
@@ -985,15 +887,6 @@ function showView(name){
   document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.toggle('active',['registro','resumen'][i]===name));
   document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-}
-
-function setCarpetaOperario(nombre){
-  carpetaOperario = nombre;
-
-  const tabs = document.querySelectorAll('#operario-tabs .view-tab');
-  tabs.forEach(t => {
-    t.classList.toggle('active', t.textContent.includes(nombre));
-  });
 }
 
 // TODO: implementa printOT, exportOTExcel y exportResumenExcel como en tu versión anterior
