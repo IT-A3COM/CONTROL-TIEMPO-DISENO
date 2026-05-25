@@ -166,12 +166,19 @@ select.cell{-webkit-appearance:none;appearance:none;text-align-last:center}
 </div>
 
 <div class="btn-tabs">
-  <button class="view-tab active" onclick="setOperarioView(null)">📋 Todas las OT</button>
-  <button class="view-tab" onclick="setOperarioView('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
+  <button class="view-tab active" onclick="showView('registro')">📋 Registro de OT</button>
   <button class="view-tab" onclick="showView('resumen');buildResumen()">📊 Resumen global</button>
 </div>
 
 <div class="view-panel active" id="view-registro">
+
+<div class="btn-tabs" id="operario-tabs" style="margin-bottom:8px;">
+  <button class="view-tab active" onclick="setCarpetaOperario('Alberto Vivoras')">👷 Alberto Vivoras</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Juanjo Cerdá')">👷 Juanjo Cerdá</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Juan Carlos')">👷 Juan Carlos</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Juan Ramón')">👷 Juan Ramón</button>
+  <button class="view-tab" onclick="setCarpetaOperario('Otro...')">👷 Otro...</button>
+</div>
 
   <!-- Carpetas por operario -->
   <div class="btn-tabs" id="operario-tabs" style="margin-bottom:8px;">
@@ -238,6 +245,7 @@ const EDIT_PASSWORD = 'A3com2026';
 let otFilter = 'abiertas'; // 'abiertas' o 'cerradas'
 let carpetaOperario = 'Alberto Vivoras'; // carpeta activa al inicio
 let operarioFilter = null; // null = todos, o nombre del operario
+let carpetaOperario = 'Alberto Vivoras';
 
 const pad=n=>String(n).padStart(2,'0');
 function fmtTime(ts){if(!ts)return'--:--:--';const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
