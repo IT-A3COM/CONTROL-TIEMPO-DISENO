@@ -540,7 +540,6 @@ function collectState(){
       num:ot.num,
       desc:ot.desc,
       cliente:ot.cliente||'',
-      color:ot.color||'#3498db',
       cerrada:ot.cerrada,
       rows:ot.rows.map(r=>{
         const tr=document.getElementById('row-'+r.id);
@@ -626,60 +625,92 @@ function applyOTFilter(){
 }
 
 // ---------- BOOT ----------
+// ---------- BOOT ----------
 async function boot(){
-  const saved=await loadFromStorage();
-  if(saved && saved.ots && saved.ots.length){
-    otId=saved.otId||0;rowId=saved.rowId||0;
-    for(const sot of saved.ots){
-      const ot={
-        id:sot.id,
-        num:sot.num,
-        desc:sot.desc||'',
-        cliente:sot.cliente||'',
-        color:sot.color||'#3498db',
-        rows:[],
-        cerrada:!!sot.cerrada
+  const saved = await loadFromStorage();
+
+  // Siempre limpiar estado y UI antes de reconstruir
+  ots = [];
+  otId = 0;
+  rowId = 0;
+
+  const tabsBar = document.getElementById('ot-tabs-bar');
+  if (tabsBar){
+    tabsBar.querySelectorAll('.ot-tab').forEach(t=>t.remove());
+  }
+  const panels = document.getElementById('ot-panels');
+  if (panels) panels.innerHTML = '';
+
+  if (saved && saved.ots && saved.ots.length){
+    otId  = saved.otId  || 0;
+    rowId = saved.rowId || 0;
+
+    for (const sot of saved.ots){
+      const ot = {
+        id:       sot.id,
+        num:      sot.num,
+        desc:     sot.desc    || '',
+        cliente:  sot.cliente || '',
+        color:    sot.color   || '#3498db',
+        rows:     [],
+        cerrada: !!sot.cerrada
       };
+
       ots.push(ot);
       renderOTTab(ot);
       renderOTPanel(ot);
-      const numEl=document.getElementById('otnum-'+ot.id);
-      const descEl=document.getElementById('otdesc-'+ot.id);
-      const cliEl=document.getElementById('otcli-'+ot.id);
-      if(numEl)numEl.value=ot.num;
-      if(descEl)descEl.value=ot.desc||'';
-      if(cliEl)cliEl.value=ot.cliente||'';
-      const colorEl=document.getElementById('otcolor-'+ot.id);
-      if(colorEl)colorEl.value=ot.color||'#3498db';
-      for(const sr of (sot.rows||[])){
-        const r={
-          id:sr.id,otId:ot.id,
-          startTs:sr.startTs,
-          endTs:sr.endTs,
-          pauses:sr.pauses||[],
+
+      const numEl   = document.getElementById('otnum-'+ot.id);
+      const descEl  = document.getElementById('otdesc-'+ot.id);
+      const cliEl   = document.getElementById('otcli-'+ot.id);
+      const colorEl = document.getElementById('otcolor-'+ot.id);
+
+      if (numEl)   numEl.value   = ot.num;
+      if (descEl)  descEl.value  = ot.desc;
+      if (cliEl)   cliEl.value   = ot.cliente;
+      if (colorEl) colorEl.value = ot.color;
+
+      for (const sr of (sot.rows || [])){
+        const r = {
+          id:        sr.id,
+          otId:      ot.id,
+          startTs:   sr.startTs,
+          endTs:     sr.endTs,
+          pauses:    sr.pauses || [],
           pauseStart:sr.pauseStart,
-          locked:sr.locked
+          locked:    sr.locked
         };
         ot.rows.push(r);
-        appendRowEl(ot.id,r,sr);
+        appendRowEl(ot.id, r, sr);
       }
-      if(ot.cerrada)restoreCerrada(ot.id);
+
+      if (ot.cerrada) restoreCerrada(ot.id);
       refreshRowNums(ot.id);
       updateOTTotal(ot.id);
       updateTabLabel(ot.id);
     }
-    const act=saved.activeOT && ots.find(o=>o.id===saved.activeOT)?saved.activeOT:ots[0]?.id;
-    if(act)activateOT(act);
+
+    const act = saved.activeOT && ots.find(o=>o.id===saved.activeOT)
+      ? saved.activeOT
+      : (ots[0]?.id || null);
+
+    if (act) activateOT(act);
+
     setStatus('✅ Datos compartidos cargados','ok');
-  }else{
+  } else {
     createOT();
     setStatus('🆕 Sesión nueva — datos se guardarán en la nube','info');
   }
-  document.getElementById('loading-overlay').style.display='none';
+
+  // Quitar overlay de carga y aplicar estados
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display='none';
+
   applyEditLockState();
-  renderLegend();
+  if (typeof renderLegend === 'function') renderLegend();
   setOTFilter('abiertas');
 }
+
 
 // ---------- CREAR / ACTIVAR OT ----------
 function createOT(){
@@ -740,15 +771,19 @@ function updateTabLabel(id){
   tab.className='ot-tab'+(isActive?' active':'')+(colorState?' estado-'+colorState:'');
 }
 function removeOT(id){
-  const ot=ots.find(o=>o.id===id);
-  showModal(`¿Eliminar la OT "${ot?.num||id}" de forma permanente? Esta acción no se puede deshacer.`,()=>{
-    ots=ots.filter(o=>o.id!==id);
+  const ot = ots.find(o=>o.id===id);
+  showModal(`¿Eliminar la OT "${ot?.num || id}" de forma permanente? Esta acción no se puede deshacer.`, ()=>{
+    ots = ots.filter(o=>o.id!==id);
     document.getElementById('tab-ot-'+id)?.remove();
     document.getElementById('panel-ot-'+id)?.remove();
-    if(activeOT===id){
-      const r=ots[ots.length-1];
-      if(r)activateOT(r.id);else activeOT=null;
+
+    // Ajustar activeOT si hace falta
+    if (activeOT === id){
+      const last = ots[ots.length-1];
+      activeOT = last ? last.id : null;
+      if (last) activateOT(last.id);
     }
+
     autosave();
   });
 }
