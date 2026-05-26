@@ -25,7 +25,7 @@ const firebaseConfig = {
 // Inicializar Firebase y Firestore
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const FIRESTORE_DOC = db.collection('ot-control').doc('global'); // documento único compartido
+const OTS_COLLECTION = db.collection('ots'); // una OT por documento
 </script>
 
 <style>
@@ -513,26 +513,8 @@ function modalCancel(){
   modalCallback=null;
 }
 
-// ---------- FIRESTORE ----------
-async function loadFromStorage(){
-  try{
-    const snap=await FIRESTORE_DOC.get();
-    if(snap.exists)return snap.data();
-  }catch(e){
-    console.error('Error leyendo Firestore',e);
-    setStatus('⚠️ Error al leer datos compartidos','err');
-  }
-  return null;
-}
-async function writeToStorage(data){
-  try{
-    await FIRESTORE_DOC.set(data);
-    return true;
-  }catch(e){
-    console.error('Error escribiendo Firestore',e);
-    return false;
-  }
-}
+
+
 function collectState(){
   return{
     ots:ots.map(ot=>({
@@ -561,6 +543,56 @@ function collectState(){
     otId,rowId,activeOT
   };
 }
+
+function serializeOT(ot){
+  return {
+    id:       ot.id,
+    num:      ot.num,
+    desc:     ot.desc || '',
+    cliente:  ot.cliente || '',
+    color:    ot.color || '#3498db',
+    cerrada: !!ot.cerrada,
+    rows:     ot.rows.map(r=>{
+      const tr = document.getElementById('row-'+r.id);
+      const c  = tr ? tr.querySelectorAll('.cell') : [];
+      return {
+        id:        r.id,
+        otId:      r.otId,
+        fecha:     c[0]?.value || '',
+        operario:  c[1]?.value || '',
+        proceso:   c[2]?.value || '',
+        obs:       c[3]?.value || '',
+        startTs:   r.startTs,
+        endTs:     r.endTs,
+        pauses:    r.pauses || [],
+        pauseStart:r.pauseStart,
+        locked:    r.locked
+      };
+    })
+  };
+}
+
+async function saveOT(otId){
+  const ot = ots.find(o=>o.id===otId);
+  if(!ot) return;
+
+  const data = serializeOT(ot);
+  try{
+    await OTS_COLLECTION.doc(String(ot.id)).set(data);
+    setStatus('✅ OT '+ot.num+' guardada','ok');
+  }catch(e){
+    console.error('Error guardando OT', otId, e);
+    setStatus('❌ Error al guardar OT '+ot.num,'err',false);
+  }
+}
+
+let saveTimers = {}; // un timer por OT
+
+function autosaveOT(otId){
+  if(saveTimers[otId]) clearTimeout(saveTimers[otId]);
+  saveTimers[otId] = setTimeout(()=>saveOT(otId), 800);
+}
+
 function autosave(){
   pendingSave=true;
   if(saveTimer)clearTimeout(saveTimer);
@@ -624,16 +656,14 @@ function applyOTFilter(){
   });
 }
 
-// ---------- BOOT ----------
-// ---------- BOOT ----------
+// ---------- BOOT (lee la colección 'ots') ----------
 async function boot(){
-  const saved = await loadFromStorage();
-
-  // Siempre limpiar estado y UI antes de reconstruir
+  // Limpiar estado en memoria
   ots = [];
   otId = 0;
   rowId = 0;
 
+  // Limpiar UI
   const tabsBar = document.getElementById('ot-tabs-bar');
   if (tabsBar){
     tabsBar.querySelectorAll('.ot-tab').forEach(t=>t.remove());
@@ -641,71 +671,82 @@ async function boot(){
   const panels = document.getElementById('ot-panels');
   if (panels) panels.innerHTML = '';
 
-  if (saved && saved.ots && saved.ots.length){
-    otId  = saved.otId  || 0;
-    rowId = saved.rowId || 0;
+  try{
+    const snap = await OTS_COLLECTION.get();
 
-    for (const sot of saved.ots){
-      const ot = {
-        id:       sot.id,
-        num:      sot.num,
-        desc:     sot.desc    || '',
-        cliente:  sot.cliente || '',
-        color:    sot.color   || '#3498db',
-        rows:     [],
-        cerrada: !!sot.cerrada
-      };
+    if (snap.empty){
+      // Primera vez: no hay OTs en la base de datos
+      createOT();
+      setStatus('🆕 Sesión nueva — datos se guardarán en la nube','info');
+    }else{
+      // Hay documentos en la colección 'ots'
+      snap.forEach(doc=>{
+        const sot = doc.data();
 
-      ots.push(ot);
-      renderOTTab(ot);
-      renderOTPanel(ot);
+        // Actualizar contadores máximos
+        if (sot.id > otId) otId = sot.id;
+        (sot.rows || []).forEach(r=>{
+          if (r.id > rowId) rowId = r.id;
+        });
 
-      const numEl   = document.getElementById('otnum-'+ot.id);
-      const descEl  = document.getElementById('otdesc-'+ot.id);
-      const cliEl   = document.getElementById('otcli-'+ot.id);
-      const colorEl = document.getElementById('otcolor-'+ot.id);
-
-      if (numEl)   numEl.value   = ot.num;
-      if (descEl)  descEl.value  = ot.desc;
-      if (cliEl)   cliEl.value   = ot.cliente;
-      if (colorEl) colorEl.value = ot.color;
-
-      for (const sr of (sot.rows || [])){
-        const r = {
-          id:        sr.id,
-          otId:      ot.id,
-          startTs:   sr.startTs,
-          endTs:     sr.endTs,
-          pauses:    sr.pauses || [],
-          pauseStart:sr.pauseStart,
-          locked:    sr.locked
+        const ot = {
+          id:       sot.id,
+          num:      sot.num,
+          desc:     sot.desc    || '',
+          cliente:  sot.cliente || '',
+          color:    sot.color   || '#3498db',
+          rows:     [],
+          cerrada: !!sot.cerrada
         };
-        ot.rows.push(r);
-        appendRowEl(ot.id, r, sr);
+
+        ots.push(ot);
+        renderOTTab(ot);
+        renderOTPanel(ot);
+
+        const numEl   = document.getElementById('otnum-'+ot.id);
+        const descEl  = document.getElementById('otdesc-'+ot.id);
+        const cliEl   = document.getElementById('otcli-'+ot.id);
+        const colorEl = document.getElementById('otcolor-'+ot.id);
+
+        if (numEl)   numEl.value   = ot.num;
+        if (descEl)  descEl.value  = ot.desc;
+        if (cliEl)   cliEl.value   = ot.cliente;
+        if (colorEl) colorEl.value = ot.color;
+
+        for (const sr of (sot.rows || [])){
+          const r = {
+            id:        sr.id,
+            otId:      ot.id,
+            startTs:   sr.startTs,
+            endTs:     sr.endTs,
+            pauses:    sr.pauses || [],
+            pauseStart:sr.pauseStart,
+            locked:    sr.locked
+          };
+          ot.rows.push(r);
+          appendRowEl(ot.id, r, sr);
+        }
+
+        if (ot.cerrada) restoreCerrada(ot.id);
+        refreshRowNums(ot.id);
+        updateOTTotal(ot.id);
+        updateTabLabel(ot.id);
+      });
+
+      if (ots.length){
+        activateOT(ots[0].id);
       }
 
-      if (ot.cerrada) restoreCerrada(ot.id);
-      refreshRowNums(ot.id);
-      updateOTTotal(ot.id);
-      updateTabLabel(ot.id);
+      setStatus('✅ Datos cargados de la nube','ok');
     }
-
-    const act = saved.activeOT && ots.find(o=>o.id===saved.activeOT)
-      ? saved.activeOT
-      : (ots[0]?.id || null);
-
-    if (act) activateOT(act);
-
-    setStatus('✅ Datos compartidos cargados','ok');
-  } else {
+  }catch(e){
+    console.error('Error leyendo OTs',e);
+    setStatus('⚠️ Error al leer OTs','err');
     createOT();
-    setStatus('🆕 Sesión nueva — datos se guardarán en la nube','info');
   }
 
-  // Quitar overlay de carga y aplicar estados
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display='none';
-
   applyEditLockState();
   if (typeof renderLegend === 'function') renderLegend();
   setOTFilter('abiertas');
@@ -797,16 +838,16 @@ function renderOTPanel(ot){
     <div class="ot-meta">
       <label>Nº OT</label>
       <input type="text" id="otnum-${ot.id}" value="${ot.num}"
-        oninput="const o=ots.find(x=>x.id===${ot.id});o.num=this.value;updateTabLabel(${ot.id});autosave()" style="width:80px">
+        oninput="const o=ots.find(x=>x.id===${ot.id});o.num=this.value;updateTabLabel(${ot.id});autosaveOT(${ot.id})" style="width:80px">
       <label>Descripción</label>
       <input type="text" id="otdesc-${ot.id}" value="${ot.desc||''}" placeholder="Descripción del trabajo"
-        oninput="const o=ots.find(x=>x.id===${ot.id});o.desc=this.value;autosave()" style="width:220px">
+        oninput="const o=ots.find(x=>x.id===${ot.id});o.desc=this.value;autosaveOT(${ot.id})" style="width:220px">
       <label>Cliente</label>
       <input type="text" id="otcli-${ot.id}" value="${ot.cliente||''}" placeholder="Nombre del cliente"
-        oninput="const o=ots.find(x=>x.id===${ot.id});o.cliente=this.value;autosave()" style="width:180px">
+        oninput="const o=ots.find(x=>x.id===${ot.id});o.cliente=this.value;autosaveOT(${ot.id})" style="width:180px">
       <label>Color</label>
       <select class="cell" style="width:120px" id="otcolor-${ot.id}"
-        onchange="const o=ots.find(x=>x.id===${ot.id});o.color=this.value;updateTabLabel(${ot.id});autosave()">
+        onchange="const o=ots.find(x=>x.id===${ot.id});o.color=this.value;updateTabLabel(${ot.id});autosaveOT(${ot.id})">
         <option value="#9b59b6" ${ot.color==='#9b59b6'?'selected':''}>Morado (Alberto)</option>
         <option value="#3498db" ${ot.color==='#3498db'?'selected':''}>Azul (Juanjo)</option>
         <option value="#f1c40f" ${ot.color==='#f1c40f'?'selected':''}>Amarillo (Juanra)</option>
@@ -1279,6 +1320,8 @@ function exportOTExcel(id){
 function exportResumenExcel(){
   alert('Implementa aquí tu lógica de exportación de resumen a Excel.');
 }
+
+
 
 boot();
 </script>
