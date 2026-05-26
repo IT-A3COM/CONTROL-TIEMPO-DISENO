@@ -593,30 +593,8 @@ function autosaveOT(otId){
   saveTimers[otId] = setTimeout(()=>saveOT(otId), 800);
 }
 
-function autosave(){
-  pendingSave=true;
-  if(saveTimer)clearTimeout(saveTimer);
-  saveTimer=setTimeout(flushSave,800);
-}
-async function flushSave(){
-  if(!pendingSave||isSaving)return;
-  pendingSave=false;isSaving=true;
-  setStatus('💾 Guardando en la nube…','saving',false);
-  const ok=await writeToStorage(collectState());
-  isSaving=false;
-  if(ok)setStatus('✅ Guardado compartido','ok');
-  else{
-    setStatus('❌ Error al guardar — reintentando…','err',false);
-    await new Promise(r=>setTimeout(r,2000));
-    const ok2=await writeToStorage(collectState());
-    setStatus(ok2?'✅ Guardado reintento':'❌ No se pudo guardar','err');
-  }
-}
-async function saveNow(){
-  if(saveTimer)clearTimeout(saveTimer);
-  pendingSave=true;
-  await flushSave();
-}
+
+
 
 // ---------- ESTADO / COLOR POR OT ----------
 function getOTColorState(ot){
@@ -813,19 +791,29 @@ function updateTabLabel(id){
 }
 function removeOT(id){
   const ot = ots.find(o=>o.id===id);
-  showModal(`¿Eliminar la OT "${ot?.num || id}" de forma permanente? Esta acción no se puede deshacer.`, ()=>{
+  showModal(`¿Eliminar la OT "${ot?.num || id}" de forma permanente? Esta acción no se puede deshacer.`, async ()=>{
+    // 1) Borrar en memoria
     ots = ots.filter(o=>o.id!==id);
+
+    // 2) Borrar en la interfaz
     document.getElementById('tab-ot-'+id)?.remove();
     document.getElementById('panel-ot-'+id)?.remove();
 
-    // Ajustar activeOT si hace falta
-    if (activeOT === id){
+    // 3) Ajustar OT activa
+    if(activeOT===id){
       const last = ots[ots.length-1];
       activeOT = last ? last.id : null;
-      if (last) activateOT(last.id);
+      if(last) activateOT(last.id);
     }
 
-    autosave();
+    // 4) Borrar en Firestore
+    try{
+      await OTS_COLLECTION.doc(String(id)).delete();
+      setStatus('🗑 OT eliminada también en la nube','ok');
+    }catch(e){
+      console.error('Error eliminando OT en Firestore',id,e);
+      setStatus('⚠️ OT borrada aquí, pero no en la nube','err',false);
+    }
   });
 }
 function renderOTPanel(ot){
@@ -898,9 +886,9 @@ function addRow(otId){
   const r={id,otId,startTs:null,endTs:null,pauses:[],pauseStart:null,locked:false};
   ot.rows.push(r);
   appendRowEl(otId,r,{fecha:today(),operario:'',proceso:'',obs:''});
-  refreshRowNums(otId);
-  updateTabLabel(otId);
-  autosave();
+ refreshRowNums(otId);
+updateTabLabel(otId);
+autosaveOT(otId);
 }
 function appendRowEl(otId,r,fields){
   const tbody=document.getElementById('tbody-'+otId);
@@ -938,8 +926,8 @@ function pressStart(id){
   r.pauses=[];
   r.pauseStart=null;
   renderRow(r);
-  updateTabLabel(r.otId);
-  autosave();
+updateTabLabel(r.otId);
+autosaveOT(r.otId);
 }
 function pressPause(id){
   const r=allRows().find(x=>x.id===id);
@@ -950,9 +938,9 @@ function pressPause(id){
     r.pauses.push({from:r.pauseStart,to:Date.now()});
     r.pauseStart=null;
   }
-  renderRow(r);
-  updateTabLabel(r.otId);
-  autosave();
+ renderRow(r);
+updateTabLabel(r.otId);
+autosaveOT(r.otId);
 }
 function pressEnd(id){
   const r=allRows().find(x=>x.id===id);
@@ -964,8 +952,8 @@ function pressEnd(id){
   r.endTs=Date.now();
   r.locked=true;
   renderRow(r);
-  updateTabLabel(r.otId);
-  autosave();
+updateTabLabel(r.otId);
+autosaveOT(r.otId);
 }
 function manualTimeChange(rowId,tipo,valor){
   if(!editUnlocked){alert('Solo tiempo con contraseña.');return;}
@@ -988,10 +976,10 @@ function manualTimeChange(rowId,tipo,valor){
   r.pauses=[];
   r.pauseStart=null;
   r.locked=!!(r.startTs && r.endTs);
-  renderRow(r);
-  updateTabLabel(r.otId);
-  autosave();
-}
+ renderRow(r);
+updateTabLabel(r.otId);
+autosaveOT(r.otId);
+
 function parseHoraTexto(fechaStr,horaStr){
   if(!fechaStr || !horaStr) return null;
 
@@ -1086,9 +1074,9 @@ function delRow(id,otId){
   ot.rows=ot.rows.filter(r=>r.id!==id);
   document.getElementById('row-'+id)?.remove();
   refreshRowNums(otId);
-  updateOTTotal(otId);
-  updateTabLabel(otId);
-  autosave();
+ updateOTTotal(otId);
+updateTabLabel(otId);
+autosaveOT(otId);
 }
 function refreshRowNums(otId){
   const ot=ots.find(o=>o.id===otId);if(!ot)return;
@@ -1134,8 +1122,8 @@ function finalizarOT(id){
   const ot=ots.find(o=>o.id===id);if(!ot)return;
   showModal(`¿Finalizar la OT ${ot.num}? Ya no se podrán añadir más filas.`,()=>{
     ot.cerrada=true;
-    applyFinalizarUI(id);
-    autosave();
+  applyFinalizarUI(id);
+autosave();
   });
 }
 function reabrirOT(id){
@@ -1158,8 +1146,8 @@ function reabrirOT(id){
     }
     renderRow(r);
   });
-  updateTabLabel(id);
-  autosave();
+ updateTabLabel(id);
+autosaveOT(id);
   applyOTFilter();
 }
 function getRowFields(r){
