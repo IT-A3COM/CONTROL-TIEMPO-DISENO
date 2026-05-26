@@ -373,6 +373,14 @@ function setStatus(msg,cls,autoClear=true){
   if(autoClear) setTimeout(()=>{el.style.opacity=0;},3000);
 }
 
+function saveNow(){
+  if(activeOT != null){
+    saveOT(activeOT);
+  }else{
+    setStatus('No hay OT activa para guardar','err');
+  }
+}
+
 // ---------- FRASES / LEYENDA ----------
 function showRandomQuote(){
   if(!QUOTES.length)return;
@@ -896,24 +904,24 @@ function appendRowEl(otId,r,fields){
   tr.id='row-'+r.id;
   const f=fields||{};
   tr.innerHTML=`
-    <td style="color:#999;font-size:10px" class="rn"></td>
-    <td><input class="cell" type="text" value="${f.fecha||''}" placeholder="dd/mm/aa" oninput="autosave()"></td>
-    <td><select class="cell" onchange="autosave()">${opOptions(f.operario||'')}</select></td>
-    <td><select class="cell" onchange="autosave()">${prOptions(f.proceso||'')}</select></td>
-    <td><input class="cell hora-inicio" type="text" placeholder="hh:mm:ss" value="" oninput="manualTimeChange(${r.id},'start',this.value)"></td>
-    <td>
-      <div class="time-cell">
-        <button class="btn-t btn-start" id="bs-${r.id}" onclick="pressStart(${r.id})">INICIO</button>
-        <button class="btn-t btn-pause" id="bp-${r.id}" onclick="pressPause(${r.id})" disabled>PAUSA</button>
-        <button class="btn-t btn-end" id="be-${r.id}" onclick="pressEnd(${r.id})" disabled>FIN</button>
-      </div>
-      <span class="pause-info"></span>
-    </td>
-    <td><input class="cell hora-fin" type="text" placeholder="hh:mm:ss" value="" oninput="manualTimeChange(${r.id},'end',this.value)"></td>
-    <td class="total-cell"><span class="total-disp"></span></td>
-    <td><input class="cell obs" type="text" value="${f.obs||''}" placeholder="Notas" oninput="autosave()"></td>
-    <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">X</button></td>
-  `;
+  <td style="color:#999;font-size:10px" class="rn"></td>
+  <td><input class="cell" type="text" value="${f.fecha||''}" placeholder="dd/mm/aa" oninput="autosaveOT(${otId})"></td>
+  <td><select class="cell" onchange="autosaveOT(${otId})">${opOptions(f.operario||'')}</select></td>
+  <td><select class="cell" onchange="autosaveOT(${otId})">${prOptions(f.proceso||'')}</select></td>
+  <td><input class="cell hora-inicio" type="text" placeholder="hh:mm:ss" value="" oninput="manualTimeChange(${r.id},'start',this.value)"></td>
+  <td>
+    <div class="time-cell">
+      <button class="btn-t btn-start" id="bs-${r.id}" onclick="pressStart(${r.id})">INICIO</button>
+      <button class="btn-t btn-pause" id="bp-${r.id}" onclick="pressPause(${r.id})" disabled>PAUSA</button>
+      <button class="btn-t btn-end" id="be-${r.id}" onclick="pressEnd(${r.id})" disabled>FIN</button>
+    </div>
+    <span class="pause-info"></span>
+  </td>
+  <td><input class="cell hora-fin" type="text" placeholder="hh:mm:ss" value="" oninput="manualTimeChange(${r.id},'end',this.value)"></td>
+  <td class="total-cell"><span class="total-disp"></span></td>
+  <td><input class="cell obs" type="text" value="${f.obs||''}" placeholder="Notas" oninput="autosaveOT(${otId})"></td>
+  <td><button class="btn-del" id="bd-${r.id}" onclick="delRow(${r.id},${otId})">X</button></td>
+`;
   tbody.appendChild(tr);
   renderRow(r);
 }
@@ -979,6 +987,7 @@ function manualTimeChange(rowId,tipo,valor){
  renderRow(r);
 updateTabLabel(r.otId);
 autosaveOT(r.otId);
+}
 
 function parseHoraTexto(fechaStr,horaStr){
   if(!fechaStr || !horaStr) return null;
