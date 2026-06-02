@@ -33,6 +33,45 @@ const OTS_COLLECTION = db.collection('ots'); // una OT por documento
       if (!snap.exists) {
         alert('No existe el documento ot-control/global');
         return;
+async function exportOT260648_fromGlobal() {
+  try {
+    const docRef = db.collection('ot-control').doc('global');
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      alert('No existe ot-control/global');
+      return;
+    }
+
+    const data = snap.data();
+    const list = data.ots || [];
+
+    // Buscar la OT cuyo num sea "OT-260648"
+    const ot = list.find(o => o.num === 'OT-260648');
+    if (!ot) {
+      alert('No se ha encontrado OT-260648 en el documento global');
+      return;
+    }
+
+    console.log('OT-260648 (global):', ot);
+
+    // Descargarla como JSON para que la tengas a salvo
+    const blob = new Blob([JSON.stringify(ot, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'OT-260648-from-global.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert('Descargado OT-260648-from-global.json');
+  } catch (e) {
+    console.error('Error leyendo OT-260648 desde global', e);
+    alert('Error leyendo OT-260648: ' + e.message);
+  }
+}
+        
       }
 
       const data = snap.data();
