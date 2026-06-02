@@ -26,6 +26,48 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const OTS_COLLECTION = db.collection('ots'); // una OT por documento
+<script>
+  // Supongo que ya tienes algo así cargado antes:
+  // const app = firebase.initializeApp(firebaseConfig);
+  // const db = firebase.firestore();
+
+  async function exportOT260648() {
+    try {
+      const docRef = db.collection('ot-control').doc('global');
+      const snap = await docRef.get();
+      if (!snap.exists) {
+        alert('No existe el documento ot-control/global');
+        return;
+      }
+
+      const data = snap.data();
+      const ots = data.ots || [];
+
+      // Buscar la OT cuyo num sea "OT-260648"
+      const target = ots.find(o => o.num === 'OT-260648');
+      if (!target) {
+        alert('No se ha encontrado la OT-260648 en Firestore');
+        return;
+      }
+
+      console.log('OT-260648 completa:', target);
+
+      // --- OPCIONAL: descargar en JSON ---
+      const blob = new Blob([JSON.stringify(target, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'OT-260648.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert('Datos de OT-260648 descargados como JSON');
+    } catch (e) {
+      console.error('Error leyendo OT-260648', e);
+      alert('Error leyendo OT-260648: ' + e.message);
+    } 
 </script>
 
 <style>
